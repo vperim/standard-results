@@ -30,4 +30,9 @@
     <!-- SourceLink for GitHub -->
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
   </ItemGroup>
+
+  <ItemGroup>
+    <!-- Include README.md in package -->
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 </Project>
