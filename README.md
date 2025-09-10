@@ -12,13 +12,18 @@ Targets **.NET Standard 2.0** and **.NET 9.0**.
 - Async helpers (`MapAsync`, `BindAsync`, `TryAsync`, etc.)
 - Immutable `Error`, `ErrorCollection`, and `ValidationErrors`
 - Builders for efficient accumulation (`ErrorCollectionBuilder`, `ValidationErrorsBuilder`)
-- Compatibility shims for .NET Standard 2.0 (nullable attributes, `Index`, `Range`)
 
 ## Installation
 
 ```bash
 dotnet add package StandardResults
 ```
+
+## Documentation
+
+- **[Result Type Guide](docs/result-type-guide.md)** - Core Result features, creation, state checking, transformations, and pattern matching
+- **[Extensions and Async Guide](docs/extensions-and-async.md)** - Advanced async operations, extension methods, and async patterns  
+- **[Validation Guide](docs/validation-guide.md)** - Error handling, validation patterns, and error aggregation
 
 ## Usage
 
