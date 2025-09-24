@@ -11,7 +11,7 @@ Targets **.NET Standard 2.0** and **.NET 9.0**.
 - `Result<T, TError>` type with success/failure flow
 - Async helpers (`MapAsync`, `BindAsync`, `TryAsync`, etc.)
 - Immutable `Error`, `ErrorCollection`, and `ValidationErrors`
-- Builders for efficient accumulation (`ErrorCollectionBuilder`, `ValidationErrorsBuilder`)
+- Fluent API for error accumulation with conditional methods (`When`, `Require`)
 
 ## Installation
 
@@ -73,11 +73,9 @@ var mapped = await r.MapAsync(x => Task.FromResult(x * 2));
 ### Error Collection
 
 ```csharp
-var builder = new ErrorCollectionBuilder()
-    .Add("not_found", "User not found")
-    .Add("timeout", "Service unavailable", transient: true);
-
-ErrorCollection errors = builder.Build();
+var errors = ErrorCollection.Empty
+    .WithError("not_found", "User not found")
+    .WithError("timeout", "Service unavailable", transient: true);
 
 Console.WriteLine(errors.Summary()); // "not_found: User not found; timeout: Service unavailable"
 ```
@@ -85,11 +83,9 @@ Console.WriteLine(errors.Summary()); // "not_found: User not found; timeout: Ser
 ### Validation Errors
 
 ```csharp
-var builder = new ValidationErrorsBuilder()
-    .Require(!string.IsNullOrWhiteSpace(username), "username", "Username is required")
-    .Require(password.Length >= 6, "password", "Password too short");
-
-ValidationErrors validation = builder.Build();
+var validation = ValidationErrors.Empty
+    .RequireNotEmpty(username, "username")
+    .Require(password?.Length >= 6, "password", "Password must be at least 6 characters");
 
 if (validation.HasErrors)
 {

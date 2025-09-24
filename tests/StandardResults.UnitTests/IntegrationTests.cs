@@ -11,12 +11,11 @@ public class IntegrationTests
     {
         var request = new UserRegistrationRequest("", "123", 15);
 
-        var validation = new ValidationErrorsBuilder()
-            .Require(!string.IsNullOrWhiteSpace(request.Email), "email", "Email is required")
-            .Require(request.Email.Contains("@"), "email", "Email must be valid")
-            .Require(request.Password.Length >= 6, "password", "Password must be at least 6 characters")
-            .Require(request.Age >= 18, "age", "Must be 18 or older")
-            .Build();
+        var validation = ValidationErrors.Empty
+            .RequireNotEmpty(request.Email, "email")
+            .Require(request.Email?.Contains("@") == true, "email", "Email must be valid")
+            .Require(request.Password?.Length >= 6, "password", "Password must be at least 6 characters")
+            .Require(request.Age >= 18, "age", "Must be 18 or older");
 
         Assert.True(validation.HasErrors);
         Assert.Equal(4, validation.Count);
@@ -30,12 +29,11 @@ public class IntegrationTests
     {
         var request = new UserRegistrationRequest("user@example.com", "securepassword", 25);
 
-        var validation = new ValidationErrorsBuilder()
-            .Require(!string.IsNullOrWhiteSpace(request.Email), "email", "Email is required")
-            .Require(request.Email.Contains("@"), "email", "Email must be valid")
-            .Require(request.Password.Length >= 6, "password", "Password must be at least 6 characters")
-            .Require(request.Age >= 18, "age", "Must be 18 or older")
-            .Build();
+        var validation = ValidationErrors.Empty
+            .RequireNotEmpty(request.Email, "email")
+            .Require(request.Email?.Contains("@") == true, "email", "Email must be valid")
+            .Require(request.Password?.Length >= 6, "password", "Password must be at least 6 characters")
+            .Require(request.Age >= 18, "age", "Must be 18 or older");
 
         Assert.False(validation.HasErrors);
         Assert.Equal(0, validation.Count);
@@ -118,7 +116,7 @@ public class IntegrationTests
 
         Assert.True(result.IsFailure);
         Assert.True(result.Error.HasErrors);
-        Assert.Contains("Email is required", result.Error.Summary());
+        Assert.Contains("email is required", result.Error.Summary());
         Assert.Contains("Password must be at least 6 characters", result.Error.Summary());
         Assert.Contains("Must be 18 or older", result.Error.Summary());
     }
@@ -140,10 +138,9 @@ public class IntegrationTests
     [Fact]
     public void ErrorAggregation_MultipleServices_CombinedErrors()
     {
-        var validationErrors = new ValidationErrorsBuilder()
-            .AddField("email", "Invalid format")
-            .AddField("password", "Too weak")
-            .Build();
+        var validationErrors = ValidationErrors.Empty
+            .WithField("email", "Invalid format")
+            .WithField("password", "Too weak");
 
         var businessErrors = ErrorCollection.Empty
             .WithError("duplicate_email", "Email already exists")
@@ -195,19 +192,18 @@ public class CreateUserCommandHandler
 
     public async Task<Result<IntegrationTests.User, ValidationErrors>> HandleAsync(IntegrationTests.CreateUserCommand command)
     {
-        var validation = new ValidationErrorsBuilder()
-            .Require(!string.IsNullOrWhiteSpace(command.Email), "email", "Email is required")
-            .Require(command.Email.Contains("@"), "email", "Email must be valid")
-            .Require(command.Password.Length >= 6, "password", "Password must be at least 6 characters")
-            .Require(command.Age >= 18, "age", "Must be 18 or older")
-            .Build();
+        var validation = ValidationErrors.Empty
+            .RequireNotEmpty(command.Email, "email")
+            .Require(command.Email?.Contains("@") == true, "email", "Email must be valid")
+            .Require(command.Password?.Length >= 6, "password", "Password must be at least 6 characters")
+            .Require(command.Age >= 18, "age", "Must be 18 or older");
 
         if (validation.HasErrors)
         {
             return Result<IntegrationTests.User, ValidationErrors>.Failure(validation);
         }
 
-        var existingUser = await this.userRepository.GetByEmailAsync(command.Email);
+        var existingUser = await this.userRepository.GetByEmailAsync(command.Email!);
         if (existingUser.IsSuccess)
         {
             var duplicateError = ValidationErrors.Empty
@@ -217,7 +213,7 @@ public class CreateUserCommandHandler
 
         var newUser = new IntegrationTests.User(
             Id: new Random().Next(1000, 9999),
-            Email: command.Email,
+            Email: command.Email!,
             Age: command.Age
         );
 

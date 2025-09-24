@@ -1,6 +1,6 @@
 namespace StandardResults.UnitTests;
 
-public class ErrorCollectionTests
+public class ErrorCollectionImmutabilityTests
 {
     [Fact]
     public void Empty_Has_NoErrors_And_Empty_Summary()
@@ -46,43 +46,96 @@ public class ErrorCollectionTests
     }
 }
 
-public class ErrorCollectionBuilderTests
+public class ErrorCollectionFluentApiTests
 {
     [Fact]
-    public void Build_Empty_Returns_Singleton()
+    public void When_Condition_True_AddsError()
     {
-        var b = new ErrorCollectionBuilder();
-        Assert.Same(ErrorCollection.Empty, b.Build());
+        var collection = ErrorCollection.Empty
+            .When(true, "error1", "First error")
+            .When(false, "error2", "Second error")
+            .When(true, "error3", "Third error");
+
+        Assert.Equal(2, collection.Count);
+        Assert.Contains("error1: First error", collection.Summary());
+        Assert.Contains("error3: Third error", collection.Summary());
+        Assert.DoesNotContain("error2", collection.Summary());
     }
 
     [Fact]
-    public void Add_And_Merge_Then_Build_Produces_Immutable_Set()
+    public void When_LazyCondition_EvaluatesCorrectly()
     {
-        var other = ErrorCollection.Empty.WithError("x", "y", transient: true);
+        var evaluationCount = 0;
 
-        var b = new ErrorCollectionBuilder()
-            .Add("a", "1")
-            .Merge(other);
+        var collection = ErrorCollection.Empty
+            .When(() => { evaluationCount++; return true; }, "error1", "Error 1")
+            .When(() => { evaluationCount++; return false; }, "error2", "Error 2");
 
-        var res = b.Build();
-        Assert.Equal(2, res.Count);
-        Assert.True(res.IsTransient);
-        Assert.Equal("a: 1; x: y", res.Summary("; "));
-
-        // Clear resets internal state
-        b.Clear();
-        Assert.Same(ErrorCollection.Empty, b.Build());
+        Assert.Equal(2, evaluationCount);
+        Assert.Equal(1, collection.Count);
+        Assert.Contains("error1: Error 1", collection.Summary());
     }
 
     [Fact]
-    public void Add_Error_Instance_Takes_Flags_From_Error()
+    public void Require_Condition_False_AddsError()
     {
-        var err = Error.Transient("t", "msg");
-        var b = new ErrorCollectionBuilder().Add(err);
-        var res = b.Build();
+        var collection = ErrorCollection.Empty
+            .Require(true, "check1", "Check 1 failed")
+            .Require(false, "check2", "Check 2 failed")
+            .Require(true, "check3", "Check 3 failed");
 
-        Assert.True(res.IsTransient);
-        Assert.Equal("t: msg", res.Summary());
+        Assert.Equal(1, collection.Count);
+        Assert.Contains("check2: Check 2 failed", collection.Summary());
+        Assert.DoesNotContain("check1", collection.Summary());
+        Assert.DoesNotContain("check3", collection.Summary());
+    }
+
+    [Fact]
+    public void Require_LazyCondition_OnlyEvaluatedOnce()
+    {
+        var callCount = 0;
+        Func<bool> expensiveCheck = () => { callCount++; return false; };
+
+        var collection = ErrorCollection.Empty
+            .Require(expensiveCheck, "validation", "Validation failed");
+
+        Assert.Equal(1, callCount);
+        Assert.Equal(1, collection.Count);
+        Assert.Contains("validation: Validation failed", collection.Summary());
+    }
+
+    [Fact]
+    public void From_CreatesCollection_FromErrorArray()
+    {
+        var error1 = Error.Permanent("error1", "Message 1");
+        var error2 = Error.Transient("error2", "Message 2");
+        var error3 = Error.Permanent("error3", "Message 3");
+
+        var collection = ErrorCollection.From(error1, error2, error3);
+
+        Assert.Equal(3, collection.Count);
+        Assert.True(collection.IsTransient);
+        Assert.Contains("error1: Message 1", collection.Summary());
+        Assert.Contains("error2: Message 2", collection.Summary());
+        Assert.Contains("error3: Message 3", collection.Summary());
+    }
+
+    [Fact]
+    public void From_EmptyArray_ReturnsEmpty()
+    {
+        var collection = ErrorCollection.From();
+        Assert.Same(ErrorCollection.Empty, collection);
+    }
+
+    [Fact]
+    public void ConditionalMethods_WithTransient_PropagatesFlag()
+    {
+        var collection = ErrorCollection.Empty
+            .When(true, "timeout", "Connection timeout", transient: true)
+            .Require(false, "auth", "Authentication required", transient: false);
+
+        Assert.Equal(2, collection.Count);
+        Assert.True(collection.IsTransient);
     }
 }
 
@@ -275,15 +328,121 @@ public class ErrorCollectionAdvancedTests
     public void LargeCollection_PerformanceCharacteristics()
     {
         var collection = ErrorCollection.Empty;
-        
+
         // Add many errors to test performance
         for (var i = 0; i < 1000; i++)
         {
             collection = collection.WithError($"code{i}", $"message{i}", i % 2 == 0);
         }
-        
+
         Assert.Equal(1000, collection.Count);
         Assert.True(collection.IsTransient); // At least one transient error
         Assert.Contains("code999: message999", collection.Summary());
+    }
+}
+
+public class ErrorCollectionConditionalMethodTests
+{
+    [Fact]
+    public void When_NullConditionFunc_ThrowsArgumentNullException()
+    {
+        var collection = ErrorCollection.Empty;
+        Func<bool>? nullFunc = null;
+
+        Assert.Throws<ArgumentNullException>(() => collection.When(nullFunc!, "code", "message"));
+    }
+
+    [Fact]
+    public void Require_NullConditionFunc_ThrowsArgumentNullException()
+    {
+        var collection = ErrorCollection.Empty;
+        Func<bool>? nullFunc = null;
+
+        Assert.Throws<ArgumentNullException>(() => collection.Require(nullFunc!, "code", "message"));
+    }
+
+    [Fact]
+    public void When_And_Require_ChainedTogether()
+    {
+        var isValid = false;
+        var hasPermission = true;
+
+        var collection = ErrorCollection.Empty
+            .When(!hasPermission, "permission", "No permission")
+            .Require(isValid, "validation", "Validation failed")
+            .When(string.IsNullOrEmpty(""), "data", "Data is empty")
+            .Require(!string.IsNullOrEmpty("test"), "test", "Test failed");
+
+        Assert.Equal(2, collection.Count);
+        Assert.Contains("validation: Validation failed", collection.Summary());
+        Assert.Contains("data: Data is empty", collection.Summary());
+    }
+
+    [Fact]
+    public void ConditionalMethods_PreserveImmutability()
+    {
+        var original = ErrorCollection.Empty.WithError("initial", "Initial error");
+
+        var modified = original
+            .When(true, "added", "Added error")
+            .Require(false, "required", "Required error");
+
+        // Original should remain unchanged
+        Assert.Equal(1, original.Count);
+        Assert.Contains("initial: Initial error", original.Summary());
+
+        // Modified should have all errors
+        Assert.Equal(3, modified.Count);
+        Assert.Contains("initial: Initial error", modified.Summary());
+        Assert.Contains("added: Added error", modified.Summary());
+        Assert.Contains("required: Required error", modified.Summary());
+    }
+
+    [Fact]
+    public void LazyEvaluation_NotExecutedWhenNotNeeded()
+    {
+        var expensiveCheckExecuted = false;
+        Func<bool> expensiveCheck = () =>
+        {
+            expensiveCheckExecuted = true;
+            return true;
+        };
+
+        // When with false condition - lambda should not execute
+        var collection1 = ErrorCollection.Empty
+            .When(() => false && expensiveCheck(), "error", "Should not appear");
+
+        Assert.False(expensiveCheckExecuted);
+        Assert.Equal(0, collection1.Count);
+
+        // Require with true condition - lambda should not execute
+        expensiveCheckExecuted = false;
+        var collection2 = ErrorCollection.Empty
+            .Require(() => true || expensiveCheck(), "error", "Should not appear");
+
+        Assert.False(expensiveCheckExecuted);
+        Assert.Equal(0, collection2.Count);
+    }
+
+    [Fact]
+    public void ComplexBusinessLogicScenario()
+    {
+        // Simulate a complex validation scenario
+        var user = new { IsActive = false, HasSubscription = true, AccountAge = 5 };
+        var request = new { Amount = 150.0, RequiresApproval = true, ApprovalCode = "" };
+
+        var errors = ErrorCollection.Empty
+            .Require(user.IsActive, "user_status", "User account is not active")
+            .When(!user.HasSubscription, "subscription", "User does not have an active subscription")
+            .When(request.Amount > 100 && string.IsNullOrEmpty(request.ApprovalCode),
+                  "approval", "Approval code required for amounts over 100")
+            .Require(() => user.AccountAge >= 1, "account_age", "Account too new")
+            .When(() => request.RequiresApproval && string.IsNullOrEmpty(request.ApprovalCode),
+                  "approval_required", "Approval code is mandatory");
+
+        Assert.Equal(3, errors.Count);
+        Assert.Contains("user_status", errors.Summary());
+        Assert.Contains("approval", errors.Summary());
+        Assert.Contains("approval_required", errors.Summary());
     }
 }

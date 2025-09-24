@@ -113,93 +113,101 @@ Console.WriteLine(validation.Summary());
 Console.WriteLine(validation); // "Invalid (2 errors)"
 ```
 
-## Builder Patterns
+## Fluent Validation Patterns
 
-### ErrorCollectionBuilder
+### ErrorCollection Conditional Methods
 ```csharp
-var builder = new ErrorCollectionBuilder();
+var errors = ErrorCollection.Empty
+    .When(string.IsNullOrEmpty(apiKey), "auth", "API key is missing")
+    .When(() => !IsValidApiKey(apiKey), "auth", "Invalid API key")
+    .Require(HasPermission(user, "admin"), "permission", "Admin permission required")
+    .Require(() => IsActiveSubscription(user), "subscription", "Active subscription required");
 
-// Add errors fluently
-builder.Add("network", "Connection failed", transient: true)
-       .Add("auth", "Invalid token")
-       .Add(Error.Permanent("custom", "Custom error"));
-
-// Merge with existing collections
-var existingErrors = ErrorCollection.Empty.WithError("prior", "Prior error");
-builder.Merge(existingErrors);
-
-// Build immutable collection
-ErrorCollection errors = builder.Build();
-
-// Reuse builder
-builder.Clear();
-builder.Add("new", "New error batch");
+// Check collection state
+if (errors.HasErrors)
+{
+    Console.WriteLine(errors.Summary());
+}
 ```
 
-### ValidationErrorsBuilder
+### ValidationErrors Fluent API
 ```csharp
 public ValidationErrors ValidateUserRegistration(UserRegistration request)
 {
-    var builder = new ValidationErrorsBuilder();
-
-    // Simple conditional validation
-    builder.Require(!string.IsNullOrWhiteSpace(request.Email), 
-                    "email", "Email is required")
-           .Require(request.Email.Contains("@"), 
-                    "email", "Email must be valid")
-           .Require(request.Password.Length >= 6, 
-                    "password", "Password must be at least 6 characters")
-           .Require(request.Age >= 18, 
-                    "age", "Must be 18 or older");
-
-    return builder.Build();
+    return ValidationErrors.Empty
+        .RequireNotEmpty(request.Email, "email")
+        .Require(request.Email?.Contains("@") == true, "email", "Email must be valid")
+        .Require(request.Password?.Length >= 6, "password", "Password must be at least 6 characters")
+        .Require(request.Age >= 18, "age", "Must be 18 or older");
 }
+```
+
+### Helper Methods for Common Validations
+```csharp
+// RequireNotNull for reference types
+var validation = ValidationErrors.Empty
+    .RequireNotNull(user, "user")
+    .RequireNotNull(user?.Profile, "profile", "User profile is required");
+
+// RequireNotNull for nullable value types
+validation = validation
+    .RequireNotNull(userId, "userId")
+    .RequireNotNull(createdDate, "createdDate", "Creation date is required");
+
+// RequireNotEmpty for strings
+validation = validation
+    .RequireNotEmpty(username, "username")
+    .RequireNotEmpty(email, "email", "Email address is required");
+
+// RequireNotEmpty for collections
+validation = validation
+    .RequireNotEmpty(items, "items", "At least one item is required")
+    .RequireNotEmpty(selectedOptions, "options");
 ```
 
 ### Advanced Validation Patterns
 
-#### Conditional Validation with When
+#### Conditional Validation with When and Require
 ```csharp
-var builder = new ValidationErrorsBuilder();
-
 // When condition is true, add error
-builder.When(string.IsNullOrEmpty(email), "email", "Email is required")
-       .When(password.Length < 6, "password", "Password too short")
-       .When(() => ExpensiveValidationCheck(), "data", "Complex validation failed");
+var validation = ValidationErrors.Empty
+    .When(string.IsNullOrEmpty(email), "email", "Email is required")
+    .When(password.Length < 6, "password", "Password too short")
+    .When(() => ExpensiveValidationCheck(), "data", "Complex validation failed");
 
 // Require is inverse of When (!condition)
-builder.Require(email.Contains("@"), "email", "Email must contain @")
-       .Require(() => IsValidDomain(email), "email", "Invalid email domain");
+validation = validation
+    .Require(email.Contains("@"), "email", "Email must contain @")
+    .Require(() => IsValidDomain(email), "email", "Invalid email domain");
 ```
 
 #### Multi-Step Validation
 ```csharp
 public ValidationErrors ValidateOrder(OrderRequest request)
 {
-    var builder = new ValidationErrorsBuilder();
-
     // Basic field validation
-    builder.Require(!string.IsNullOrWhiteSpace(request.ProductId), 
-                    "productId", "Product ID is required")
-           .Require(request.Quantity > 0, 
-                    "quantity", "Quantity must be positive");
+    var validation = ValidationErrors.Empty
+        .RequireNotEmpty(request.ProductId, "productId", "Product ID is required")
+        .Require(request.Quantity > 0, "quantity", "Quantity must be positive");
 
     // Conditional validation based on other fields
     if (!string.IsNullOrWhiteSpace(request.ProductId))
     {
-        builder.When(!ProductExists(request.ProductId), 
-                     "productId", "Product does not exist")
-               .When(() => !IsProductAvailable(request.ProductId), 
-                     "productId", "Product is not available");
+        validation = validation
+            .When(!ProductExists(request.ProductId),
+                  "productId", "Product does not exist")
+            .When(() => !IsProductAvailable(request.ProductId),
+                  "productId", "Product is not available");
     }
 
     if (request.Quantity > 0)
     {
-        builder.When(() => GetInventory(request.ProductId) < request.Quantity,
-                     "quantity", "Insufficient inventory");
+        validation = validation
+            .When(() => GetInventory(request.ProductId) < request.Quantity,
+                  "quantity", "Insufficient inventory");
     }
 
-    return builder.Build();
+    return validation;
 }
 ```
 
@@ -247,7 +255,7 @@ public async Task<Result<Order, IError>> ProcessOrderAsync(OrderRequest request)
 ```csharp
 public Result<ProcessedData, ErrorCollection> ProcessMultipleItems(List<Item> items)
 {
-    var errorBuilder = new ErrorCollectionBuilder();
+    var errors = ErrorCollection.Empty;
     var processedItems = new List<ProcessedData>();
 
     foreach (var item in items)
@@ -259,11 +267,10 @@ public Result<ProcessedData, ErrorCollection> ProcessMultipleItems(List<Item> it
         }
         else
         {
-            errorBuilder.Add("processing", $"Failed to process item {item.Id}: {result.Error}");
+            errors = errors.WithError("processing", $"Failed to process item {item.Id}: {result.Error}");
         }
     }
 
-    var errors = errorBuilder.Build();
     if (errors.HasErrors)
         return Result<ProcessedData, ErrorCollection>.Failure(errors);
 
@@ -346,14 +353,12 @@ public async Task<Result<CompletedOrder, ValidationErrors>> ValidateCompleteOrde
     };
 
     var results = await Task.WhenAll(tasks);
-    
-    var builder = new ValidationErrorsBuilder();
+
+    var finalValidation = ValidationErrors.Empty;
     foreach (var validation in results)
     {
-        builder.Merge(validation);
+        finalValidation = finalValidation.Merge(validation);
     }
-
-    var finalValidation = builder.Build();
     if (finalValidation.HasErrors)
         return Result<CompletedOrder, ValidationErrors>.Failure(finalValidation);
 
