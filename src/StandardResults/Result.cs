@@ -58,10 +58,10 @@ public readonly struct Result<T, TError> : IEquatable<Result<T, TError>>
 
     private Result(bool ok, T? value, TError? error)
     {
-        isSuccess = ok;
+        this.isSuccess = ok;
         this.value = value;
         this.error = error;
-        initialized = true;
+        this.initialized = true;
     }
 
     /// <summary>
@@ -71,11 +71,11 @@ public readonly struct Result<T, TError> : IEquatable<Result<T, TError>>
     /// When true, accessing other properties or methods will throw <see cref="InvalidOperationException"/>.
     /// Always check this property before using a Result that might be uninitialized.
     /// </remarks>
-    public bool IsDefault => !initialized;
+    public bool IsDefault => !this.initialized;
 
     private void ThrowIfResultIsUninitialized()
     {
-        if (!initialized)
+        if (!this.initialized)
             throw new InvalidOperationException("Result is default (uninitialized).");
     }
 
@@ -90,8 +90,8 @@ public readonly struct Result<T, TError> : IEquatable<Result<T, TError>>
     {
         get
         {
-            ThrowIfResultIsUninitialized();
-            return isSuccess;
+            this.ThrowIfResultIsUninitialized();
+            return this.isSuccess;
         }
     }
 
@@ -106,8 +106,8 @@ public readonly struct Result<T, TError> : IEquatable<Result<T, TError>>
     {
         get
         {
-            ThrowIfResultIsUninitialized();
-            return !isSuccess;
+            this.ThrowIfResultIsUninitialized();
+            return !this.isSuccess;
         }
     }
 
@@ -118,9 +118,9 @@ public readonly struct Result<T, TError> : IEquatable<Result<T, TError>>
     /// Thrown when the Result is uninitialized (default value) or when accessing the value of a failed Result.
     /// </exception>
     public T Value =>
-        IsSuccess
-            ? value!
-            : throw new InvalidOperationException(IsDefault
+        this.IsSuccess
+            ? this.value!
+            : throw new InvalidOperationException(this.IsDefault
                 ? "Result is default (uninitialized)."
                 : "No value on failure");
 
@@ -131,9 +131,9 @@ public readonly struct Result<T, TError> : IEquatable<Result<T, TError>>
     /// Thrown when the Result is uninitialized (default value) or when accessing the error of a successful Result.
     /// </exception>
     public TError Error =>
-        IsFailure
-            ? error!
-            : throw new InvalidOperationException(IsDefault
+        this.IsFailure
+            ? this.error!
+            : throw new InvalidOperationException(this.IsDefault
                 ? "Result is default (uninitialized)."
                 : "No error on success");
 
@@ -145,7 +145,7 @@ public readonly struct Result<T, TError> : IEquatable<Result<T, TError>>
     /// <exception cref="InvalidOperationException">
     /// Thrown when the Result is uninitialized (default value).
     /// </exception>
-    public T GetValueOrDefault(T defaultValue) => IsSuccess ? value! : defaultValue;
+    public T GetValueOrDefault(T defaultValue) => this.IsSuccess ? this.value! : defaultValue;
 
     /// <summary>
     /// Gets the failure error or returns the specified default error if the Result succeeded.
@@ -155,7 +155,7 @@ public readonly struct Result<T, TError> : IEquatable<Result<T, TError>>
     /// <exception cref="InvalidOperationException">
     /// Thrown when the Result is uninitialized (default value).
     /// </exception>
-    public TError GetErrorOrDefault(TError defaultError) => IsFailure ? error! : defaultError;
+    public TError GetErrorOrDefault(TError defaultError) => this.IsFailure ? this.error! : defaultError;
 
     /// <summary>
     /// Creates a successful Result with the specified value.
@@ -186,7 +186,8 @@ public readonly struct Result<T, TError> : IEquatable<Result<T, TError>>
     /// Thrown when the Result is uninitialized (default value).
     /// </exception>
     public TResult Match<TResult>(Func<T, TResult> onSuccess, Func<TError, TResult> onFailure) 
-        => IsSuccess ? onSuccess(value!) : onFailure(Error);
+        =>
+            this.IsSuccess ? onSuccess(this.value!) : onFailure(this.Error);
 
     /// <summary>
     /// Matches the Result state and executes the appropriate action.
@@ -198,8 +199,8 @@ public readonly struct Result<T, TError> : IEquatable<Result<T, TError>>
     /// </exception>
     public void Match(Action<T> onSuccess, Action<TError> onFailure)
     {
-        if (IsSuccess) onSuccess(value!);
-        else onFailure(Error);
+        if (this.IsSuccess) onSuccess(this.value!);
+        else onFailure(this.Error);
     }
 
     /// <summary>
@@ -212,7 +213,8 @@ public readonly struct Result<T, TError> : IEquatable<Result<T, TError>>
     /// Thrown when the Result is uninitialized (default value).
     /// </exception>
     public Result<TOut, TError> Map<TOut>(Func<T, TOut> map)
-        => IsSuccess ? Result<TOut, TError>.Success(map(value!)) : Result<TOut, TError>.Failure(Error);
+        =>
+            this.IsSuccess ? Result<TOut, TError>.Success(map(this.value!)) : Result<TOut, TError>.Failure(this.Error);
 
     /// <summary>
     /// Transforms the error using the specified function if the Result is failed, otherwise returns a successful Result with the same value.
@@ -225,7 +227,8 @@ public readonly struct Result<T, TError> : IEquatable<Result<T, TError>>
     /// </exception>
     public Result<T, TErrorOut> MapError<TErrorOut>(Func<TError, TErrorOut> map)
         where TErrorOut : notnull
-        => IsFailure ? Result<T, TErrorOut>.Failure(map(error!)) : Result<T, TErrorOut>.Success(Value);
+        =>
+            this.IsFailure ? Result<T, TErrorOut>.Failure(map(this.error!)) : Result<T, TErrorOut>.Success(this.Value);
 
     /// <summary>
     /// Chains another Result-returning operation if the current Result is successful, otherwise returns a failed Result with the same error.
@@ -237,7 +240,8 @@ public readonly struct Result<T, TError> : IEquatable<Result<T, TError>>
     /// Thrown when the Result is uninitialized (default value).
     /// </exception>
     public Result<TOut, TError> Bind<TOut>(Func<T, Result<TOut, TError>> bind)
-        => IsSuccess ? bind(value!) : Result<TOut, TError>.Failure(Error);
+        =>
+            this.IsSuccess ? bind(this.value!) : Result<TOut, TError>.Failure(this.Error);
 
     /// <summary>
     /// Attempts to get the success value.
@@ -249,7 +253,7 @@ public readonly struct Result<T, TError> : IEquatable<Result<T, TError>>
     /// </exception>
     public bool TryGetValue([NotNullWhen(true)] out T v)
     {
-        if (IsSuccess) { v = value!; return true; }
+        if (this.IsSuccess) { v = this.value!; return true; }
         v = default!; return false;
     }
     
@@ -263,7 +267,7 @@ public readonly struct Result<T, TError> : IEquatable<Result<T, TError>>
     /// </exception>
     public bool TryGetError([NotNullWhen(true)] out TError e)
     {
-        if (IsFailure) { e = error!; return true; }
+        if (this.IsFailure) { e = this.error!; return true; }
         e = default!; return false;
     }
 
@@ -277,7 +281,7 @@ public readonly struct Result<T, TError> : IEquatable<Result<T, TError>>
     /// Thrown when the Result is uninitialized (default value).
     /// </exception>
     public void Deconstruct(out bool isSuccess, out T? value, out TError? error)
-        => (isSuccess, value, error) = (IsSuccess, this.value, this.error);
+        => (isSuccess, value, error) = (this.IsSuccess, this.value, this.error);
 
     /// <summary>
     /// Asynchronously matches the Result state and executes the appropriate function, returning the result.
@@ -292,9 +296,10 @@ public readonly struct Result<T, TError> : IEquatable<Result<T, TError>>
     public Task<TResult> MatchAsync<TResult>(
         Func<T, Task<TResult>> onSuccess,
         Func<TError, Task<TResult>> onFailure)
-        => IsSuccess
-            ? onSuccess(value!)
-            : onFailure(Error);
+        =>
+            this.IsSuccess
+            ? onSuccess(this.value!)
+            : onFailure(this.Error);
 
     /// <summary>
     /// Asynchronously matches the Result state and executes the appropriate action.
@@ -308,9 +313,10 @@ public readonly struct Result<T, TError> : IEquatable<Result<T, TError>>
     public Task MatchAsync(
         Func<T, Task> onSuccess,
         Func<TError, Task> onFailure)
-        => IsSuccess
-            ? onSuccess(value!)
-            : onFailure(Error);
+        =>
+            this.IsSuccess
+            ? onSuccess(this.value!)
+            : onFailure(this.Error);
 
     /// <summary>
     /// Asynchronously transforms the success value using the specified function if the Result is successful, otherwise returns a failed Result with the same error.
@@ -323,9 +329,10 @@ public readonly struct Result<T, TError> : IEquatable<Result<T, TError>>
     /// </exception>
     public async Task<Result<TOut, TError>> MapAsync<TOut>(
         Func<T, Task<TOut>> map)
-        => IsSuccess
-            ? Result<TOut, TError>.Success(await map(value!).ConfigureAwait(false))
-            : Result<TOut, TError>.Failure(Error);
+        =>
+            this.IsSuccess
+            ? Result<TOut, TError>.Success(await map(this.value!).ConfigureAwait(false))
+            : Result<TOut, TError>.Failure(this.Error);
 
     /// <summary>
     /// Asynchronously transforms the error using the specified function if the Result is failed, otherwise returns a successful Result with the same value.
@@ -339,9 +346,10 @@ public readonly struct Result<T, TError> : IEquatable<Result<T, TError>>
     public async Task<Result<T, TErrorOut>> MapErrorAsync<TErrorOut>(
         Func<TError, Task<TErrorOut>> map)
         where TErrorOut : notnull
-        => IsFailure
-            ? Result<T, TErrorOut>.Failure(await map(error!).ConfigureAwait(false))
-            : Result<T, TErrorOut>.Success(Value);
+        =>
+            this.IsFailure
+            ? Result<T, TErrorOut>.Failure(await map(this.error!).ConfigureAwait(false))
+            : Result<T, TErrorOut>.Success(this.Value);
 
     /// <summary>
     /// Asynchronously chains another Result-returning operation if the current Result is successful, otherwise returns a failed Result with the same error.
@@ -354,9 +362,10 @@ public readonly struct Result<T, TError> : IEquatable<Result<T, TError>>
     /// </exception>
     public async Task<Result<TOut, TError>> BindAsync<TOut>(
         Func<T, Task<Result<TOut, TError>>> bind)
-        => IsSuccess
-            ? await bind(value!).ConfigureAwait(false)
-            : Result<TOut, TError>.Failure(Error);
+        =>
+            this.IsSuccess
+            ? await bind(this.value!).ConfigureAwait(false)
+            : Result<TOut, TError>.Failure(this.Error);
 
     /// <summary>
     /// Asynchronously executes a side effect action on the success value if the Result is successful, then returns the original Result.
@@ -369,7 +378,7 @@ public readonly struct Result<T, TError> : IEquatable<Result<T, TError>>
     public async Task<Result<T, TError>> TapAsync(
         Func<T, Task> onSuccess)
     {
-        if (IsSuccess) await onSuccess(value!).ConfigureAwait(false);
+        if (this.IsSuccess) await onSuccess(this.value!).ConfigureAwait(false);
         return this;
     }
 
@@ -384,7 +393,7 @@ public readonly struct Result<T, TError> : IEquatable<Result<T, TError>>
     public async Task<Result<T, TError>> TapErrorAsync(
         Func<TError, Task> onFailure)
     {
-        if (IsFailure) await onFailure(error!).ConfigureAwait(false);
+        if (this.IsFailure) await onFailure(this.error!).ConfigureAwait(false);
         return this;
     }
 
@@ -400,7 +409,8 @@ public readonly struct Result<T, TError> : IEquatable<Result<T, TError>>
     public async Task<Result<T, TError>> EnsureAsync(
         Func<T, Task<bool>> predicate,
         Func<TError> errorFactory)
-        => IsSuccess && await predicate(value!).ConfigureAwait(false)
+        =>
+            this.IsSuccess && await predicate(this.value!).ConfigureAwait(false)
             ? this
             : Failure(errorFactory());
 
@@ -415,16 +425,16 @@ public readonly struct Result<T, TError> : IEquatable<Result<T, TError>>
     public bool Equals(Result<T, TError> other)
     {
         // Handle default(Result<,>) safely (both uninitialized -> equal)
-        if (initialized != other.initialized) return false;
-        if (!initialized) return true;
+        if (this.initialized != other.initialized) return false;
+        if (!this.initialized) return true;
 
         // Discriminators must match
-        if (IsSuccess != other.IsSuccess) return false;
+        if (this.IsSuccess != other.IsSuccess) return false;
 
         // Safe: Value/Error are non-null by contract
-        return IsSuccess
-            ? EqualityComparer<T>.Default.Equals(Value, other.Value)
-            : EqualityComparer<TError>.Default.Equals(Error, other.Error);
+        return this.IsSuccess
+            ? EqualityComparer<T>.Default.Equals(this.Value, other.Value)
+            : EqualityComparer<TError>.Default.Equals(this.Error, other.Error);
     }
 
     /// <summary>
@@ -435,7 +445,7 @@ public readonly struct Result<T, TError> : IEquatable<Result<T, TError>>
     /// <exception cref="InvalidOperationException">
     /// Thrown when the Result is uninitialized (default value) and accessed during comparison.
     /// </exception>
-    public override bool Equals(object? obj) => obj is Result<T, TError> other && Equals(other);
+    public override bool Equals(object? obj) => obj is Result<T, TError> other && this.Equals(other);
 
     /// <summary>
     /// Returns the hash code for the current Result.
@@ -449,14 +459,14 @@ public readonly struct Result<T, TError> : IEquatable<Result<T, TError>>
         unchecked
         {
             // Make default(Result<,>) safe and stable
-            if (!initialized) return 0;
+            if (!this.initialized) return 0;
 
             var hash = 17;
-            hash = hash * 31 + (IsSuccess ? 1 : 0);
-            if (IsSuccess)
-                hash = hash * 31 + EqualityComparer<T>.Default.GetHashCode(value!);
+            hash = hash * 31 + (this.IsSuccess ? 1 : 0);
+            if (this.IsSuccess)
+                hash = hash * 31 + EqualityComparer<T>.Default.GetHashCode(this.value!);
             else
-                hash = hash * 31 + EqualityComparer<TError>.Default.GetHashCode(error!);
+                hash = hash * 31 + EqualityComparer<TError>.Default.GetHashCode(this.error!);
             return hash;
         }
     }
@@ -483,7 +493,8 @@ public readonly struct Result<T, TError> : IEquatable<Result<T, TError>>
     /// </summary>
     /// <returns>A string representation of the current Result.</returns>
     public override string ToString()
-        => IsDefault
+        =>
+            this.IsDefault
            ? "Result<default>"
-           : IsSuccess ? $"Success({value})" : $"Failure({error})";
+           : this.IsSuccess ? $"Success({this.value})" : $"Failure({this.error})";
 }

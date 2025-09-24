@@ -17,23 +17,23 @@ public sealed record Error : IError
     public static Error Permanent(string code, string msg) => new(code, msg, false);
 
     public override string ToString() => string.IsNullOrWhiteSpace(this.Code)
-        ? $"{Message}"
-        : $"{Code}: {Message}";
+        ? $"{this.Message}"
+        : $"{this.Code}: {this.Message}";
 
     public bool Equals(Error? other)
         => other is not null
-           && string.Equals(Code, other.Code, StringComparison.Ordinal)
-           && string.Equals(Message, other.Message, StringComparison.Ordinal)
-           && IsTransient == other.IsTransient;
+           && string.Equals(this.Code, other.Code, StringComparison.Ordinal)
+           && string.Equals(this.Message, other.Message, StringComparison.Ordinal)
+           && this.IsTransient == other.IsTransient;
 
     public override int GetHashCode()
     {
         unchecked
         {
             var h = 17;
-            h = h * 31 + StringComparer.Ordinal.GetHashCode(Code);
-            h = h * 31 + StringComparer.Ordinal.GetHashCode(Message);
-            h = h * 31 + (IsTransient ? 1 : 0);
+            h = h * 31 + StringComparer.Ordinal.GetHashCode(this.Code);
+            h = h * 31 + StringComparer.Ordinal.GetHashCode(this.Message);
+            h = h * 31 + (this.IsTransient ? 1 : 0);
             return h;
         }
     }

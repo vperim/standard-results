@@ -10,15 +10,15 @@ namespace StandardResults;
 public sealed class ErrorCollection : IError, IEquatable<ErrorCollection>
 {
     public string Code => nameof(ErrorCollection);
-    public string Message => Summary();
+    public string Message => this.Summary();
     public bool IsTransient { get; }
-    public int Count => Errors.Count;
-    public bool HasErrors => Count != 0;
+    public int Count => this.Errors.Count;
+    public bool HasErrors => this.Count != 0;
 
     internal ErrorCollection(Error[] errors, bool isTransient)
     {
         this.Errors = Array.AsReadOnly(errors);
-        IsTransient = isTransient;
+        this.IsTransient = isTransient;
     }
 
     public IReadOnlyList<Error> Errors { get; }
@@ -26,7 +26,8 @@ public sealed class ErrorCollection : IError, IEquatable<ErrorCollection>
     public static ErrorCollection Empty { get; } = new([], false);
 
     public string Summary(string separator)
-        => HasErrors ? string.Join(separator, Errors.Select(e => e.ToString())).TrimEnd() : string.Empty;
+        =>
+            this.HasErrors ? string.Join(separator, this.Errors.Select(e => e.ToString())).TrimEnd() : string.Empty;
 
     public string Summary() => this.Summary("; ");
 
@@ -40,7 +41,7 @@ public sealed class ErrorCollection : IError, IEquatable<ErrorCollection>
 
         var err = transient ? Error.Transient(code, message) : Error.Permanent(code, message);
         Error[] arr = [.. this.Errors, err]; 
-        return new ErrorCollection(arr, IsTransient || transient);
+        return new ErrorCollection(arr, this.IsTransient || transient);
     }
 
     /// <summary>
@@ -50,7 +51,7 @@ public sealed class ErrorCollection : IError, IEquatable<ErrorCollection>
     {
         if (error is null) throw new ArgumentNullException(nameof(error));
         Error[] arr = [.. this.Errors, error];
-        return new ErrorCollection(arr, IsTransient || error.IsTransient);
+        return new ErrorCollection(arr, this.IsTransient || error.IsTransient);
     }
 
     /// <summary>
@@ -74,10 +75,10 @@ public sealed class ErrorCollection : IError, IEquatable<ErrorCollection>
         if (this.IsTransient != other.IsTransient) return false;
         if (this.Count != other.Count) return false;
 
-        return Errors.SequenceEqual(other.Errors);
+        return this.Errors.SequenceEqual(other.Errors);
     }
 
-    public override bool Equals(object? obj) => Equals(obj as ErrorCollection);
+    public override bool Equals(object? obj) => this.Equals(obj as ErrorCollection);
 
     public static bool operator ==(ErrorCollection? left, ErrorCollection? right)
         => ReferenceEquals(left, right) || (left is not null && left.Equals(right));
@@ -88,10 +89,10 @@ public sealed class ErrorCollection : IError, IEquatable<ErrorCollection>
     {
         unchecked
         {
-            var h = IsTransient ? 1 : 0;
-            return Errors.Aggregate(h, (current, t) => current * 31 + t.GetHashCode());
+            var h = this.IsTransient ? 1 : 0;
+            return this.Errors.Aggregate(h, (current, t) => current * 31 + t.GetHashCode());
         }
     }
 
-    public override string ToString() => HasErrors ? $"Errors ({Count})" : "No errors";
+    public override string ToString() => this.HasErrors ? $"Errors ({this.Count})" : "No errors";
 }

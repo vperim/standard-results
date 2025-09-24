@@ -14,17 +14,17 @@ namespace StandardResults;
 public sealed class ValidationErrors : IError, IEquatable<ValidationErrors>
 {
     public string Code => nameof(ValidationErrors);
-    public string Message => Summary();
+    public string Message => this.Summary();
     public bool IsTransient { get; }
 
-    public int Count => Errors.Count;
-    public bool HasErrors => Count != 0;
+    public int Count => this.Errors.Count;
+    public bool HasErrors => this.Count != 0;
 
     // Internal ctor: used by builder/factory methods. Copies are created by callers as needed.
     internal ValidationErrors(Error[] errors, bool isTransient)
     {
         this.Errors = Array.AsReadOnly(errors);
-        IsTransient = isTransient;
+        this.IsTransient = isTransient;
     }
 
     public IReadOnlyList<Error> Errors { get; }
@@ -32,7 +32,8 @@ public sealed class ValidationErrors : IError, IEquatable<ValidationErrors>
     public static ValidationErrors Empty { get; } = new([], false);
 
     public string Summary(string separator)
-        => HasErrors ? string.Join(separator, Errors.Select(e => e.ToString())).TrimEnd() : string.Empty;
+        =>
+            this.HasErrors ? string.Join(separator, this.Errors.Select(e => e.ToString())).TrimEnd() : string.Empty;
 
     public string Summary() => this.Summary("; ");
 
@@ -44,7 +45,7 @@ public sealed class ValidationErrors : IError, IEquatable<ValidationErrors>
 
         var error = transient ? Error.Transient(fieldName, message) : Error.Permanent(fieldName, message);
         Error[] arr = [.. this.Errors, error];
-        return new ValidationErrors(arr, IsTransient || transient);
+        return new ValidationErrors(arr, this.IsTransient || transient);
     }
 
     /// <summary>Pure merge: returns a new instance concatenating errors in order.</summary>
@@ -65,12 +66,12 @@ public sealed class ValidationErrors : IError, IEquatable<ValidationErrors>
         if (this.IsTransient != other.IsTransient) return false;
         if (this.Count != other.Count) return false;
 
-        var a = Errors;
+        var a = this.Errors;
         var b = other.Errors;
         return !a.Where((t, i) => !t.Equals(b[i])).Any();
     }
 
-    public override bool Equals(object? obj) => Equals(obj as ValidationErrors);
+    public override bool Equals(object? obj) => this.Equals(obj as ValidationErrors);
 
     public static bool operator ==(ValidationErrors left, ValidationErrors right) => Equals(left, right);
     public static bool operator !=(ValidationErrors left, ValidationErrors right) => !Equals(left, right);
@@ -79,10 +80,10 @@ public sealed class ValidationErrors : IError, IEquatable<ValidationErrors>
     {
         unchecked
         {
-            var h = IsTransient ? 1 : 0;
-            return Errors.Aggregate(h, (current, t) => current * 31 + t.GetHashCode());
+            var h = this.IsTransient ? 1 : 0;
+            return this.Errors.Aggregate(h, (current, t) => current * 31 + t.GetHashCode());
         }
     }
 
-    public override string ToString() => HasErrors ? $"Invalid ({Count} errors)" : "Valid";
+    public override string ToString() => this.HasErrors ? $"Invalid ({this.Count} errors)" : "Valid";
 }

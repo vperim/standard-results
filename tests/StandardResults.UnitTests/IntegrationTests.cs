@@ -207,7 +207,7 @@ public class CreateUserCommandHandler
             return Result<IntegrationTests.User, ValidationErrors>.Failure(validation);
         }
 
-        var existingUser = await userRepository.GetByEmailAsync(command.Email);
+        var existingUser = await this.userRepository.GetByEmailAsync(command.Email);
         if (existingUser.IsSuccess)
         {
             var duplicateError = ValidationErrors.Empty
@@ -236,7 +236,7 @@ public class UserService
 
     public async Task<Result<IntegrationTests.User, Error>> GetUserByIdAsync(int id)
     {
-        return await repository.GetByIdAsync(id);
+        return await this.repository.GetByIdAsync(id);
     }
 }
 
@@ -253,7 +253,7 @@ public class MockUserRepository
     {
         await Task.Delay(1); // Simulate async operation
 
-        var user = users.FirstOrDefault(u => u.Id == id);
+        var user = this.users.FirstOrDefault(u => u.Id == id);
         return user != null
             ? Result<IntegrationTests.User, Error>.Success(user)
             : Result<IntegrationTests.User, Error>.Failure(Error.Permanent("not_found", $"User with ID {id} not found"));
@@ -263,7 +263,7 @@ public class MockUserRepository
     {
         await Task.Delay(1); // Simulate async operation
 
-        var user = users.FirstOrDefault(u => u.Email == email);
+        var user = this.users.FirstOrDefault(u => u.Email == email);
         return user != null
             ? Result<IntegrationTests.User, Error>.Success(user)
             : Result<IntegrationTests.User, Error>.Failure(Error.Permanent("not_found", $"User with email {email} not found"));
@@ -285,7 +285,7 @@ public class ApiService
         
         for (var attempt = 1; attempt <= maxRetries; attempt++)
         {
-            var result = await httpClient.GetAsync(endpoint);
+            var result = await this.httpClient.GetAsync(endpoint);
             
             if (result.IsSuccess)
             {
@@ -311,11 +311,11 @@ public class MockHttpClient
     public async Task<Result<string, Error>> GetAsync(string endpoint)
     {
         await Task.Delay(10); // Simulate network delay
-        callCount++;
+        this.callCount++;
 
         return endpoint switch
         {
-            "test-endpoint" when callCount < 3 => Result<string, Error>.Failure(
+            "test-endpoint" when this.callCount < 3 => Result<string, Error>.Failure(
                 Error.Transient("network_error", "Temporary network issue")),
             "test-endpoint" => Result<string, Error>.Success("retry-success-data"),
             "permanent-error" => Result<string, Error>.Failure(
