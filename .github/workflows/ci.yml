@@ -3,11 +3,21 @@ name: CI & Publish
 on:
   push:
     branches: [ main ]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - '*.sln'
+      - '.github/workflows/**'
     tags:
       - '[0-9]+.[0-9]+.[0-9]+'          # 1.0.0
       - '[0-9]+.[0-9]+.[0-9]+-*'        # 1.0.0-beta.1
   pull_request:
     branches: [ main ]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - '*.sln'
+      - '.github/workflows/**'
   workflow_dispatch:
 
 env:
