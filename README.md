@@ -1,6 +1,7 @@
 # StandardResults
 
 [![CI & Publish](https://github.com/vperim/standard-results/actions/workflows/ci.yml/badge.svg)](https://github.com/vperim/standard-results/actions/workflows/ci.yml)
+[![NuGet](https://img.shields.io/nuget/v/StandardResults.svg)](https://www.nuget.org/packages/StandardResults)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 Lightweight C# result primitives for functional error handling with support for async operations, validation aggregation, and error collections.  
