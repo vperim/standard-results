@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0;net9.0</TargetFrameworks>
+    <TargetFramework>netstandard2.0</TargetFramework>
     <LangVersion>preview</LangVersion>
 
     <Nullable>enable</Nullable>
@@ -11,12 +11,12 @@
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <IsPackable>true</IsPackable>
     <PackageId>StandardResults</PackageId>
-    <Authors>Maegi</Authors>
+    <Authors>vperim</Authors>
     <Description>Lightweight Result primitives with async helpers and validation aggregation.</Description>
     <PackageTags>result;functional;error-handling</PackageTags>
-    <RepositoryUrl>https://github.com/OutlanderZOR/StandardResults</RepositoryUrl>
+    <RepositoryUrl>https://github.com/vperim/standard-results</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageProjectUrl>https://github.com/OutlanderZOR/StandardResults</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/vperim/standard-results</PackageProjectUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
 
@@ -31,8 +31,8 @@
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
   </ItemGroup>
 
-  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
-    <PackageReference Include="System.Collections.Immutable" Version="9.0.9" />
+  <ItemGroup>
+    <PackageReference Include="System.Collections.Immutable" Version="6.0.0" />
   </ItemGroup>
 
   <ItemGroup>

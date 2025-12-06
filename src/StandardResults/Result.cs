@@ -479,7 +479,7 @@ public readonly struct Result<T, TError> : IEquatable<Result<T, TError>>
     /// <param name="right">The second Result to compare.</param>
     /// <returns>true if the Results are equal; otherwise, false.</returns>
     public static bool operator ==(Result<T, TError> left, Result<T, TError> right) => left.Equals(right);
-    
+
     /// <summary>
     /// Determines whether two Results are not equal.
     /// </summary>
@@ -487,6 +487,56 @@ public readonly struct Result<T, TError> : IEquatable<Result<T, TError>>
     /// <param name="right">The second Result to compare.</param>
     /// <returns>true if the Results are not equal; otherwise, false.</returns>
     public static bool operator !=(Result<T, TError> left, Result<T, TError> right) => !left.Equals(right);
+
+    /// <summary>
+    /// Implicitly converts an error of type <typeparamref name="TError"/> to a failed Result.
+    /// </summary>
+    /// <param name="error">The failure error.</param>
+    /// <returns>A failed Result containing the error.</returns>
+    /// <exception cref="ArgumentNullException">
+    /// Thrown when <paramref name="error"/> is null.
+    /// </exception>
+    /// <remarks>
+    /// <para>This operator enables concise error returns in methods that return <see cref="Result{T, TError}"/>:</para>
+    /// <code>
+    /// public Result&lt;User, Error&gt; GetUser(int id)
+    /// {
+    ///     if (id &lt;= 0)
+    ///         return Error.Permanent("invalid_id", "ID must be positive");
+    ///
+    ///     return Result&lt;User, Error&gt;.Success(new User { Id = id });
+    /// }
+    /// </code>
+    /// <para>
+    /// <strong>Recommendation:</strong> For maximum code clarity, use strongly-typed error types
+    /// such as <see cref="Error"/>, <see cref="ValidationErrors"/>, or custom error types that implement
+    /// <see cref="IError"/>. When using primitive types like <see cref="string"/> as <typeparamref name="TError"/>,
+    /// consider using the explicit <see cref="Failure(TError)"/> factory method instead for better readability.
+    /// </para>
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// // Recommended: Using strongly-typed errors
+    /// public Result&lt;User, Error&gt; GetUser(int id)
+    /// {
+    ///     if (id &lt;= 0)
+    ///         return Error.Permanent("invalid_id", "ID must be positive");
+    ///
+    ///     return Result&lt;User, Error&gt;.Success(new User { Id = id });
+    /// }
+    ///
+    /// // Recommended: Using ValidationErrors
+    /// public Result&lt;Order, ValidationErrors&gt; CreateOrder(OrderRequest request)
+    /// {
+    ///     var validation = ValidateOrder(request);
+    ///     if (validation.HasErrors)
+    ///         return validation;
+    ///
+    ///     return Result&lt;Order, ValidationErrors&gt;.Success(new Order(request));
+    /// }
+    /// </code>
+    /// </example>
+    public static implicit operator Result<T, TError>(TError error) => Failure(error);
 
     /// <summary>
     /// Returns a string representation of the current Result.

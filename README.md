@@ -1,10 +1,10 @@
 # StandardResults
 
-[![CI & Publish](https://github.com/OutlanderZOR/StandardResults/actions/workflows/ci.yml/badge.svg)](https://github.com/OutlanderZOR/StandardResults/actions/workflows/ci.yml)
+[![CI & Publish](https://github.com/vperim/standard-results/actions/workflows/ci.yml/badge.svg)](https://github.com/vperim/standard-results/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 Lightweight C# result primitives for functional error handling with support for async operations, validation aggregation, and error collections.  
-Targets **.NET Standard 2.0** and **.NET 9.0**.
+Targets **.NET Standard 2.0**.
 
 ## Features
 

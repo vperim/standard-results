@@ -336,10 +336,95 @@ public class ResultTests
         object result2 = Result<int, string>.Success(5);
         object result3 = Result<int, string>.Success(6);
         object notResult = "not a result";
-        
+
         Assert.True(result1.Equals(result2));
         Assert.False(result1.Equals(result3));
         Assert.False(result1.Equals(notResult));
-        Assert.False(result1.Equals(null));
+        Assert.False(result1.Equals((object?)null));
+    }
+
+    [Fact]
+    public void ImplicitConversion_FromError_CreatesFailureResult()
+    {
+        Result<int, string> result = "error message";
+
+        Assert.True(result.IsFailure);
+        Assert.Equal("error message", result.Error);
+    }
+
+    [Fact]
+    public void ImplicitConversion_NullError_ThrowsArgumentNullException()
+    {
+        Assert.Throws<ArgumentNullException>(() =>
+        {
+            Result<int, string> result = (string)null!;
+        });
+    }
+
+    [Fact]
+    public void ImplicitConversion_InMethodReturn_WorksForErrors()
+    {
+        static Result<int, string> GetValue(bool succeed)
+        {
+            if (!succeed)
+                return "failed";  // Implicit conversion for error
+
+            return Result<int, string>.Success(100);  // Explicit for success
+        }
+
+        var success = GetValue(true);
+        var failure = GetValue(false);
+
+        Assert.True(success.IsSuccess);
+        Assert.Equal(100, success.Value);
+
+        Assert.True(failure.IsFailure);
+        Assert.Equal("failed", failure.Error);
+    }
+
+    [Fact]
+    public void ImplicitConversion_WithCustomErrorType_Works()
+    {
+        Result<string, Error> GetUser(int id)
+        {
+            if (id <= 0)
+                return Error.Permanent("invalid_id", "ID must be positive");  // Implicit for error
+
+            return Result<string, Error>.Success("User data");  // Explicit for success
+        }
+
+        var failure = GetUser(-1);
+        var success = GetUser(1);
+
+        Assert.True(failure.IsFailure);
+        Assert.Equal("invalid_id", failure.Error.Code);
+        Assert.Equal("ID must be positive", failure.Error.Message);
+
+        Assert.True(success.IsSuccess);
+        Assert.Equal("User data", success.Value);
+    }
+
+    [Fact]
+    public void ImplicitConversion_WithValidationErrors_Works()
+    {
+        Result<string, ValidationErrors> ValidateInput(string? input)
+        {
+            var validation = ValidationErrors.Empty
+                .RequireNotEmpty(input, "input", "Input is required");
+
+            if (validation.HasErrors)
+                return validation;  // Implicit for error
+
+            return Result<string, ValidationErrors>.Success(input!);
+        }
+
+        var failure = ValidateInput(null);
+        var success = ValidateInput("valid");
+
+        Assert.True(failure.IsFailure);
+        Assert.True(failure.Error.HasErrors);
+
+        Assert.True(success.IsSuccess);
+        Assert.Equal("valid", success.Value);
     }
 }

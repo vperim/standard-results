@@ -4,26 +4,30 @@ on:
   push:
     branches: [ main ]
     tags:
-      - 'v*.*.*'          # e.g. v1.2.3
-      - 'v*.*.*-*'        # e.g. v1.2.3-beta.1
+      - '[0-9]+.[0-9]+.[0-9]+'          # 1.0.0
+      - '[0-9]+.[0-9]+.[0-9]+-*'        # 1.0.0-beta.1
   pull_request:
     branches: [ main ]
   workflow_dispatch:
 
+env:
+  DOTNET_VERSION: '9.0.x'
+  NUGET_DIRECTORY: ${{ github.workspace }}/nuget
+
 jobs:
   build_and_test:
+    if: ${{ !startsWith(github.ref, 'refs/tags/') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # useful for SourceLink and versioning
+          fetch-depth: 0
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: |
-            9.0.x
+          dotnet-version: ${{ env.DOTNET_VERSION }}
 
       - name: Cache NuGet
         uses: actions/cache@v4
@@ -53,7 +57,7 @@ jobs:
             echo "No coverage file found." >> $GITHUB_STEP_SUMMARY
           fi
 
-      - name: Upload test results (artifact)
+      - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -61,9 +65,13 @@ jobs:
           path: TestResults
 
   publish:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: ${{ startsWith(github.ref, 'refs/tags/') }}
     runs-on: ubuntu-latest
-    needs: build_and_test
+
+    permissions:
+      contents: read
+      packages: write
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -73,47 +81,68 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: |
-            9.0.x
+          dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: Determine Version from Tag
+      - name: Extract version from tag
         id: version
-        shell: bash
         run: |
-          TAG="${GITHUB_REF_NAME}"   # e.g., v1.2.3 or v1.2.3-beta.1
-          # Strip leading 'v'
-          VERSION="${TAG#v}"
+          VERSION=${GITHUB_REF#refs/tags/}
 
-          # Basic SemVer validation: 1.2.3 or 1.2.3-prerelease.1+build
+          # Validate semver format
           if [[ ! "$VERSION" =~ ^[0-9]+(\.[0-9]+){2}(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$ ]]; then
-            echo "Tag '${TAG}' is not valid semver (vMAJOR.MINOR.PATCH[-prerelease][+build])." >&2
+            echo "Tag '${VERSION}' is not valid semver (MAJOR.MINOR.PATCH[-prerelease][+build])." >&2
             exit 1
           fi
 
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Extracted version: $VERSION"
 
       - name: Restore
         run: dotnet restore
 
-      - name: Pack
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Pack NuGet packages
         run: |
-          dotnet pack ./src/StandardResults/StandardResults.csproj \
+          mkdir -p ${{ env.NUGET_DIRECTORY }}
+
+          dotnet pack src/StandardResults/StandardResults.csproj \
             --configuration Release \
-            --no-restore \
-            -p:PackageVersion=${{ steps.version.outputs.version }} \
+            --no-build \
+            --output ${{ env.NUGET_DIRECTORY }} \
+            -p:PackageVersion=${{ steps.version.outputs.VERSION }} \
             -p:ContinuousIntegrationBuild=true
 
-      - name: Push to NuGet
+          dotnet pack src/StandardResults.Analyzers/StandardResults.Analyzers.csproj \
+            --configuration Release \
+            --no-build \
+            --output ${{ env.NUGET_DIRECTORY }} \
+            -p:PackageVersion=${{ steps.version.outputs.VERSION }} \
+            -p:ContinuousIntegrationBuild=true
+
+      - name: List created packages
+        run: |
+          echo "Created packages:"
+          ls -lah ${{ env.NUGET_DIRECTORY }}
+
+      - name: Push to NuGet.org
         env:
           NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
         run: |
-          # Push both .nupkg and .snupkg
-          dotnet nuget push "**/bin/Release/*.nupkg" \
+          dotnet nuget push "${{ env.NUGET_DIRECTORY }}/*.nupkg" \
             --api-key "$NUGET_API_KEY" \
             --source "https://api.nuget.org/v3/index.json" \
             --skip-duplicate
 
-          dotnet nuget push "**/bin/Release/*.snupkg" \
+          dotnet nuget push "${{ env.NUGET_DIRECTORY }}/*.snupkg" \
             --api-key "$NUGET_API_KEY" \
             --source "https://api.nuget.org/v3/index.json" \
-            --skip-duplicate
+            --skip-duplicate || true
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-packages-${{ steps.version.outputs.VERSION }}
+          path: ${{ env.NUGET_DIRECTORY }}/*
+          retention-days: 30
