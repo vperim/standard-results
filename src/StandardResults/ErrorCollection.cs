@@ -90,7 +90,7 @@ public sealed class ErrorCollection : IError, IEquatable<ErrorCollection>
         }
     }
 
-    public override string ToString() => this.HasErrors ? $"Errors ({this.Count})" : "No errors";
+    public override string ToString() => this.HasErrors ? $"Errors ({this.Count}): {this.Summary()}" : "No errors";
 
     // Convenience factory for creating from a set of errors
     public static ErrorCollection From(params Error[] errors)

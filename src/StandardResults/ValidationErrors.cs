@@ -83,7 +83,7 @@ public sealed class ValidationErrors : IError, IEquatable<ValidationErrors>
         }
     }
 
-    public override string ToString() => this.HasErrors ? $"Invalid ({this.Count} errors)" : "Valid";
+    public override string ToString() => this.HasErrors ? $"Invalid ({this.Count} errors): {this.Summary()}" : "Valid";
 
     public static ValidationErrors From(params (string Field, string Message, bool Transient)[] items)
     {

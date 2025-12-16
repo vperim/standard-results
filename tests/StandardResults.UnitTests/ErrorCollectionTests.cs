@@ -320,8 +320,8 @@ public class ErrorCollectionAdvancedTests
             .WithError("second", "message2");
         
         Assert.Equal("No errors", empty.ToString());
-        Assert.Equal("Errors (1)", single.ToString());
-        Assert.Equal("Errors (2)", multiple.ToString());
+        Assert.Equal("Errors (1): test: message", single.ToString());
+        Assert.Equal("Errors (2): first: message1; second: message2", multiple.ToString());
     }
 
     [Fact]
