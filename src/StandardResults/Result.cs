@@ -415,6 +415,72 @@ public readonly struct Result<T, TError> : IEquatable<Result<T, TError>>
             : Failure(errorFactory());
 
     /// <summary>
+    /// Returns the current Result if successful, otherwise returns a new successful Result with the specified fallback value.
+    /// </summary>
+    /// <param name="fallbackValue">The value to use if the current Result is a failure.</param>
+    /// <returns>The current Result if successful; otherwise, a successful Result containing the fallback value.</returns>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when the Result is uninitialized (default value).
+    /// </exception>
+    public Result<T, TError> Or(T fallbackValue)
+        => this.IsSuccess ? this : Success(fallbackValue);
+
+    /// <summary>
+    /// Returns the current Result if successful, otherwise returns a new successful Result with a value produced by the fallback factory.
+    /// </summary>
+    /// <param name="fallbackFactory">A function that produces the fallback value from the error. Only invoked if the Result is a failure.</param>
+    /// <returns>The current Result if successful; otherwise, a successful Result containing the factory-produced value.</returns>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when the Result is uninitialized (default value).
+    /// </exception>
+    public Result<T, TError> Or(Func<TError, T> fallbackFactory)
+        => this.IsSuccess ? this : Success(fallbackFactory(this.error!));
+
+    /// <summary>
+    /// Returns the current Result if successful, otherwise returns the specified fallback Result.
+    /// </summary>
+    /// <param name="fallback">The Result to return if the current Result is a failure.</param>
+    /// <returns>The current Result if successful; otherwise, the fallback Result.</returns>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when the Result is uninitialized (default value).
+    /// </exception>
+    public Result<T, TError> OrElse(Result<T, TError> fallback)
+        => this.IsSuccess ? this : fallback;
+
+    /// <summary>
+    /// Returns the current Result if successful, otherwise returns a Result produced by the fallback factory.
+    /// </summary>
+    /// <param name="fallbackFactory">A function that produces the fallback Result from the error. Only invoked if the Result is a failure.</param>
+    /// <returns>The current Result if successful; otherwise, the factory-produced Result.</returns>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when the Result is uninitialized (default value).
+    /// </exception>
+    public Result<T, TError> OrElse(Func<TError, Result<T, TError>> fallbackFactory)
+        => this.IsSuccess ? this : fallbackFactory(this.error!);
+
+    /// <summary>
+    /// Asynchronously returns the current Result if successful, otherwise returns a new successful Result with a value produced by the async fallback factory.
+    /// </summary>
+    /// <param name="fallbackFactory">An async function that produces the fallback value from the error. Only invoked if the Result is a failure.</param>
+    /// <returns>A task containing the current Result if successful; otherwise, a successful Result containing the factory-produced value.</returns>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when the Result is uninitialized (default value).
+    /// </exception>
+    public async Task<Result<T, TError>> OrAsync(Func<TError, Task<T>> fallbackFactory)
+        => this.IsSuccess ? this : Success(await fallbackFactory(this.error!).ConfigureAwait(false));
+
+    /// <summary>
+    /// Asynchronously returns the current Result if successful, otherwise returns a Result produced by the async fallback factory.
+    /// </summary>
+    /// <param name="fallbackFactory">An async function that produces the fallback Result from the error. Only invoked if the Result is a failure.</param>
+    /// <returns>A task containing the current Result if successful; otherwise, the factory-produced Result.</returns>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when the Result is uninitialized (default value).
+    /// </exception>
+    public async Task<Result<T, TError>> OrElseAsync(Func<TError, Task<Result<T, TError>>> fallbackFactory)
+        => this.IsSuccess ? this : await fallbackFactory(this.error!).ConfigureAwait(false);
+
+    /// <summary>
     /// Determines whether the specified Result is equal to the current Result.
     /// </summary>
     /// <param name="other">The Result to compare with the current Result.</param>

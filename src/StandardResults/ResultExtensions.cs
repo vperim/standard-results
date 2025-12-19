@@ -93,4 +93,100 @@ public static class ResultExtensions
         => result.IsSuccess
             ? await bind(result.Value).ConfigureAwait(false)
             : Result<T2, TError>.Failure(result.Error);
+
+    /// <summary>
+    /// Awaits the Result task and returns the Result if successful, otherwise returns a new successful Result with the specified fallback value.
+    /// </summary>
+    /// <typeparam name="T">The type of the success value.</typeparam>
+    /// <typeparam name="TError">The type of the error.</typeparam>
+    /// <param name="resultTask">The task containing the Result.</param>
+    /// <param name="fallbackValue">The value to use if the Result is a failure.</param>
+    /// <returns>A task containing the Result if successful; otherwise, a successful Result containing the fallback value.</returns>
+    public static async Task<Result<T, TError>> Or<T, TError>(
+        this Task<Result<T, TError>> resultTask, T fallbackValue)
+        where TError : notnull
+    {
+        var result = await resultTask.ConfigureAwait(false);
+        return result.Or(fallbackValue);
+    }
+
+    /// <summary>
+    /// Awaits the Result task and returns the Result if successful, otherwise returns a new successful Result with a value produced by the fallback factory.
+    /// </summary>
+    /// <typeparam name="T">The type of the success value.</typeparam>
+    /// <typeparam name="TError">The type of the error.</typeparam>
+    /// <param name="resultTask">The task containing the Result.</param>
+    /// <param name="fallbackFactory">A function that produces the fallback value from the error. Only invoked if the Result is a failure.</param>
+    /// <returns>A task containing the Result if successful; otherwise, a successful Result containing the factory-produced value.</returns>
+    public static async Task<Result<T, TError>> Or<T, TError>(
+        this Task<Result<T, TError>> resultTask, Func<TError, T> fallbackFactory)
+        where TError : notnull
+    {
+        var result = await resultTask.ConfigureAwait(false);
+        return result.Or(fallbackFactory);
+    }
+
+    /// <summary>
+    /// Awaits the Result task and returns the Result if successful, otherwise returns a new successful Result with a value produced by the async fallback factory.
+    /// </summary>
+    /// <typeparam name="T">The type of the success value.</typeparam>
+    /// <typeparam name="TError">The type of the error.</typeparam>
+    /// <param name="resultTask">The task containing the Result.</param>
+    /// <param name="fallbackFactory">An async function that produces the fallback value from the error. Only invoked if the Result is a failure.</param>
+    /// <returns>A task containing the Result if successful; otherwise, a successful Result containing the factory-produced value.</returns>
+    public static async Task<Result<T, TError>> OrAsync<T, TError>(
+        this Task<Result<T, TError>> resultTask, Func<TError, Task<T>> fallbackFactory)
+        where TError : notnull
+    {
+        var result = await resultTask.ConfigureAwait(false);
+        return await result.OrAsync(fallbackFactory).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Awaits the Result task and returns the Result if successful, otherwise returns the specified fallback Result.
+    /// </summary>
+    /// <typeparam name="T">The type of the success value.</typeparam>
+    /// <typeparam name="TError">The type of the error.</typeparam>
+    /// <param name="resultTask">The task containing the Result.</param>
+    /// <param name="fallback">The Result to return if the awaited Result is a failure.</param>
+    /// <returns>A task containing the Result if successful; otherwise, the fallback Result.</returns>
+    public static async Task<Result<T, TError>> OrElse<T, TError>(
+        this Task<Result<T, TError>> resultTask, Result<T, TError> fallback)
+        where TError : notnull
+    {
+        var result = await resultTask.ConfigureAwait(false);
+        return result.OrElse(fallback);
+    }
+
+    /// <summary>
+    /// Awaits the Result task and returns the Result if successful, otherwise returns a Result produced by the fallback factory.
+    /// </summary>
+    /// <typeparam name="T">The type of the success value.</typeparam>
+    /// <typeparam name="TError">The type of the error.</typeparam>
+    /// <param name="resultTask">The task containing the Result.</param>
+    /// <param name="fallbackFactory">A function that produces the fallback Result from the error. Only invoked if the Result is a failure.</param>
+    /// <returns>A task containing the Result if successful; otherwise, the factory-produced Result.</returns>
+    public static async Task<Result<T, TError>> OrElse<T, TError>(
+        this Task<Result<T, TError>> resultTask, Func<TError, Result<T, TError>> fallbackFactory)
+        where TError : notnull
+    {
+        var result = await resultTask.ConfigureAwait(false);
+        return result.OrElse(fallbackFactory);
+    }
+
+    /// <summary>
+    /// Awaits the Result task and returns the Result if successful, otherwise returns a Result produced by the async fallback factory.
+    /// </summary>
+    /// <typeparam name="T">The type of the success value.</typeparam>
+    /// <typeparam name="TError">The type of the error.</typeparam>
+    /// <param name="resultTask">The task containing the Result.</param>
+    /// <param name="fallbackFactory">An async function that produces the fallback Result from the error. Only invoked if the Result is a failure.</param>
+    /// <returns>A task containing the Result if successful; otherwise, the factory-produced Result.</returns>
+    public static async Task<Result<T, TError>> OrElseAsync<T, TError>(
+        this Task<Result<T, TError>> resultTask, Func<TError, Task<Result<T, TError>>> fallbackFactory)
+        where TError : notnull
+    {
+        var result = await resultTask.ConfigureAwait(false);
+        return await result.OrElseAsync(fallbackFactory).ConfigureAwait(false);
+    }
 }
