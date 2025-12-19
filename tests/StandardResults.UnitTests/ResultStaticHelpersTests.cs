@@ -247,11 +247,160 @@ public class ResultStaticHelpersTests
 
         Assert.True(results[0].IsSuccess);
         Assert.Equal(1, results[0].Value);
-        
+
         Assert.True(results[1].IsFailure);
         Assert.Equal("error2", results[1].Error);
-        
+
         Assert.True(results[2].IsSuccess);
         Assert.Equal(3, results[2].Value);
+    }
+
+    [Theory]
+    [InlineData(true, true, true, null)]           // both success
+    [InlineData(false, true, false, "first")]      // first fails
+    [InlineData(true, false, false, "second")]     // second fails
+    [InlineData(false, false, false, "first")]     // both fail, returns first
+    public void Combine2_ReturnsExpectedResult(bool r1Success, bool r2Success, bool expectedSuccess, string? expectedError)
+    {
+        var r1 = r1Success ? Result<int, string>.Success(1) : Result<int, string>.Failure("first");
+        var r2 = r2Success ? Result<string, string>.Success("two") : Result<string, string>.Failure("second");
+
+        var combined = Result.Combine(r1, r2);
+
+        Assert.Equal(expectedSuccess, combined.IsSuccess);
+        if (expectedSuccess)
+            Assert.Equal((1, "two"), combined.Value);
+        else
+            Assert.Equal(expectedError, combined.Error);
+    }
+
+    [Fact]
+    public void Combine3_AllSuccess_ReturnsTuple()
+    {
+        var r1 = Result<int, string>.Success(1);
+        var r2 = Result<string, string>.Success("two");
+        var r3 = Result<bool, string>.Success(true);
+
+        var combined = Result.Combine(r1, r2, r3);
+
+        Assert.True(combined.IsSuccess);
+        Assert.Equal((1, "two", true), combined.Value);
+    }
+
+    [Fact]
+    public void Combine3_MiddleFails_ReturnsMiddleError()
+    {
+        var r1 = Result<int, string>.Success(1);
+        var r2 = Result<string, string>.Failure("middle error");
+        var r3 = Result<bool, string>.Success(true);
+
+        var combined = Result.Combine(r1, r2, r3);
+
+        Assert.True(combined.IsFailure);
+        Assert.Equal("middle error", combined.Error);
+    }
+
+    [Fact]
+    public void Combine4_AllSuccess_ReturnsTuple()
+    {
+        var r1 = Result<int, string>.Success(1);
+        var r2 = Result<string, string>.Success("two");
+        var r3 = Result<bool, string>.Success(true);
+        var r4 = Result<double, string>.Success(4.0);
+
+        var combined = Result.Combine(r1, r2, r3, r4);
+
+        Assert.True(combined.IsSuccess);
+        Assert.Equal((1, "two", true, 4.0), combined.Value);
+    }
+
+    [Fact]
+    public void Combine4_LastFails_ReturnsLastError()
+    {
+        var r1 = Result<int, string>.Success(1);
+        var r2 = Result<string, string>.Success("two");
+        var r3 = Result<bool, string>.Success(true);
+        var r4 = Result<double, string>.Failure("last error");
+
+        var combined = Result.Combine(r1, r2, r3, r4);
+
+        Assert.True(combined.IsFailure);
+        Assert.Equal("last error", combined.Error);
+    }
+
+    [Fact]
+    public void CombineAll_AllSuccess_ReturnsTuple()
+    {
+        var r1 = Result<int, ValidationErrors>.Success(1);
+        var r2 = Result<string, ValidationErrors>.Success("two");
+
+        var combined = Result.CombineAll(r1, r2);
+
+        Assert.True(combined.IsSuccess);
+        Assert.Equal((1, "two"), combined.Value);
+    }
+
+    [Fact]
+    public void CombineAll_ValidationErrors_MultipleFail_CollectsAllErrors()
+    {
+        var r1 = Result<int, ValidationErrors>.Failure(
+            ValidationErrors.Empty.WithField("email", "Invalid email"));
+        var r2 = Result<string, ValidationErrors>.Failure(
+            ValidationErrors.Empty.WithField("password", "Too short"));
+
+        var combined = Result.CombineAll(r1, r2);
+
+        Assert.True(combined.IsFailure);
+        Assert.Equal(2, combined.Error.Errors.Count);
+        Assert.Contains(combined.Error.Errors, e => e.Code == "email");
+        Assert.Contains(combined.Error.Errors, e => e.Code == "password");
+    }
+
+    [Fact]
+    public void CombineAll_ValidationErrors_MixedResults_CollectsOnlyFailedErrors()
+    {
+        var r1 = Result<int, ValidationErrors>.Failure(
+            ValidationErrors.Empty.WithField("field1", "error1"));
+        var r2 = Result<string, ValidationErrors>.Success("ok");
+        var r3 = Result<bool, ValidationErrors>.Failure(
+            ValidationErrors.Empty.WithField("field3", "error3"));
+
+        var combined = Result.CombineAll(r1, r2, r3);
+
+        Assert.True(combined.IsFailure);
+        Assert.Equal(2, combined.Error.Errors.Count);
+        Assert.Contains(combined.Error.Errors, e => e.Code == "field1");
+        Assert.Contains(combined.Error.Errors, e => e.Code == "field3");
+    }
+
+    [Fact]
+    public void CombineAll_ErrorCollection_MultipleFail_CollectsAllErrors()
+    {
+        var r1 = Result<int, ErrorCollection>.Failure(
+            ErrorCollection.Empty.WithError(Error.Permanent("code1", "message1")));
+        var r2 = Result<string, ErrorCollection>.Failure(
+            ErrorCollection.Empty.WithError(Error.Transient("code2", "message2")));
+
+        var combined = Result.CombineAll(r1, r2);
+
+        Assert.True(combined.IsFailure);
+        Assert.Equal(2, combined.Error.Errors.Count);
+        Assert.Contains(combined.Error.Errors, e => e.Code == "code1");
+        Assert.Contains(combined.Error.Errors, e => e.Code == "code2");
+    }
+
+    [Fact]
+    public void CombineAll_ErrorCollection_MixedResults_CollectsOnlyFailedErrors()
+    {
+        var r1 = Result<int, ErrorCollection>.Failure(
+            ErrorCollection.Empty.WithError(Error.Permanent("code1", "message1")));
+        var r2 = Result<string, ErrorCollection>.Success("ok");
+        var r3 = Result<bool, ErrorCollection>.Failure(
+            ErrorCollection.Empty.WithError(Error.Permanent("code3", "message3")));
+
+        var combined = Result.CombineAll(r1, r2, r3);
+
+        Assert.True(combined.IsFailure);
+        Assert.Equal(2, combined.Error.Errors.Count);
     }
 }

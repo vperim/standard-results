@@ -535,4 +535,99 @@ public class ResultTests
 
         Assert.Throws<InvalidOperationException>(act);
     }
+
+    [Fact]
+    public void Ensure_Success_PredicateTrue_PreservesResult()
+    {
+        var result = Result<int, string>.Success(10);
+
+        var ensured = result.Ensure(v => v > 5, _ => "too small");
+
+        Assert.True(ensured.IsSuccess);
+        Assert.Equal(10, ensured.Value);
+        Assert.Equal(result, ensured);
+    }
+
+    [Fact]
+    public void Ensure_Success_PredicateFalse_ReturnsFailure()
+    {
+        var result = Result<int, string>.Success(3);
+
+        var ensured = result.Ensure(v => v > 5, _ => "too small");
+
+        Assert.True(ensured.IsFailure);
+        Assert.Equal("too small", ensured.Error);
+    }
+
+    [Fact]
+    public void Ensure_Success_PredicateFalse_ErrorFactoryReceivesValue()
+    {
+        var result = Result<int, string>.Success(3);
+
+        var ensured = result.Ensure(v => v > 5, v => $"value {v} is too small");
+
+        Assert.True(ensured.IsFailure);
+        Assert.Equal("value 3 is too small", ensured.Error);
+    }
+
+    [Fact]
+    public void Ensure_Failure_DoesNotExecutePredicate()
+    {
+        var result = Result<int, string>.Failure("original error");
+        var predicateExecuted = false;
+
+        var ensured = result.Ensure(_ => { predicateExecuted = true; return true; }, _ => "new error");
+
+        Assert.False(predicateExecuted);
+        Assert.True(ensured.IsFailure);
+        Assert.Equal("original error", ensured.Error);
+    }
+
+    [Fact]
+    public void Ensure_Chaining_AllPredicatesPass()
+    {
+        var result = Result<int, string>.Success(10);
+
+        var ensured = result
+            .Ensure(v => v > 0, _ => "must be positive")
+            .Ensure(v => v < 100, _ => "must be less than 100")
+            .Ensure(v => v % 2 == 0, _ => "must be even");
+
+        Assert.True(ensured.IsSuccess);
+        Assert.Equal(10, ensured.Value);
+    }
+
+    [Fact]
+    public void Ensure_Chaining_FirstFailureShortCircuits()
+    {
+        var result = Result<int, string>.Success(10);
+        var secondPredicateExecuted = false;
+
+        var ensured = result
+            .Ensure(v => v > 100, _ => "must be greater than 100")
+            .Ensure(_ => { secondPredicateExecuted = true; return true; }, _ => "second");
+
+        Assert.False(secondPredicateExecuted);
+        Assert.True(ensured.IsFailure);
+        Assert.Equal("must be greater than 100", ensured.Error);
+    }
+
+    [Fact]
+    public void Ensure_WithSimpleErrorFactory_Works()
+    {
+        var result = Result<int, string>.Success(3);
+
+        var ensured = result.Ensure(v => v > 5, () => "too small");
+
+        Assert.True(ensured.IsFailure);
+        Assert.Equal("too small", ensured.Error);
+    }
+
+    [Fact]
+    public void Ensure_Default_ThrowsInvalidOperationException()
+    {
+        var result = default(Result<int, string>);
+
+        Assert.Throws<InvalidOperationException>(() => result.Ensure(_ => true, _ => "error"));
+    }
 }

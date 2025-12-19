@@ -442,6 +442,55 @@ public readonly struct Result<T, TError> : IEquatable<Result<T, TError>>
     }
 
     /// <summary>
+    /// Ensures that the success value satisfies a predicate, otherwise converts the Result to a failure.
+    /// </summary>
+    /// <param name="predicate">Predicate to test the success value.</param>
+    /// <param name="errorFactory">Function to create an error from the value if the predicate fails.</param>
+    /// <returns>The original Result if successful and the predicate passes, or a failed Result if the predicate fails.</returns>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when the Result is uninitialized (default value).
+    /// </exception>
+    /// <example>
+    /// <code>
+    /// var result = GetUser(userId)
+    ///     .Ensure(user => user.IsActive, user => Error.Permanent("inactive", $"User {user.Id} is inactive"))
+    ///     .Ensure(user => user.EmailVerified, _ => Error.Permanent("unverified", "Email not verified"));
+    /// </code>
+    /// </example>
+    public Result<T, TError> Ensure(
+        Func<T, bool> predicate,
+        Func<T, TError> errorFactory)
+    {
+        if (this.IsFailure)
+            return this;
+
+        return predicate(this.value!)
+            ? this
+            : Failure(errorFactory(this.value!));
+    }
+
+    /// <summary>
+    /// Ensures that the success value satisfies a predicate, otherwise converts the Result to a failure.
+    /// </summary>
+    /// <param name="predicate">Predicate to test the success value.</param>
+    /// <param name="errorFactory">Function to create an error if the predicate fails.</param>
+    /// <returns>The original Result if successful and the predicate passes, or a failed Result if the predicate fails.</returns>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when the Result is uninitialized (default value).
+    /// </exception>
+    public Result<T, TError> Ensure(
+        Func<T, bool> predicate,
+        Func<TError> errorFactory)
+    {
+        if (this.IsFailure)
+            return this;
+
+        return predicate(this.value!)
+            ? this
+            : Failure(errorFactory());
+    }
+
+    /// <summary>
     /// Asynchronously ensures that the success value satisfies a predicate, otherwise converts the Result to a failure.
     /// </summary>
     /// <param name="predicate">Async predicate to test the success value.</param>
