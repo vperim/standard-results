@@ -368,6 +368,50 @@ public readonly struct Result<T, TError> : IEquatable<Result<T, TError>>
             : Result<TOut, TError>.Failure(this.Error);
 
     /// <summary>
+    /// Executes a side effect action on the success value if the Result is successful, then returns the original Result.
+    /// </summary>
+    /// <param name="action">Action to execute on the success value.</param>
+    /// <returns>The original Result unchanged.</returns>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when the Result is uninitialized (default value).
+    /// </exception>
+    /// <example>
+    /// <code>
+    /// var result = GetUser(userId)
+    ///     .Tap(user => logger.LogInformation("Found user: {Name}", user.Name))
+    ///     .Tap(user => metrics.Increment("users.retrieved"));
+    /// </code>
+    /// </example>
+    public Result<T, TError> Tap(Action<T> action)
+    {
+        if (this.IsSuccess)
+            action(this.value!);
+        return this;
+    }
+
+    /// <summary>
+    /// Executes a side effect action on the failure error if the Result is failed, then returns the original Result.
+    /// </summary>
+    /// <param name="action">Action to execute on the failure error.</param>
+    /// <returns>The original Result unchanged.</returns>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when the Result is uninitialized (default value).
+    /// </exception>
+    /// <example>
+    /// <code>
+    /// var result = GetUser(userId)
+    ///     .TapError(error => logger.LogWarning("User lookup failed: {Error}", error))
+    ///     .TapError(error => metrics.Increment("users.lookup_failed"));
+    /// </code>
+    /// </example>
+    public Result<T, TError> TapError(Action<TError> action)
+    {
+        if (this.IsFailure)
+            action(this.error!);
+        return this;
+    }
+
+    /// <summary>
     /// Asynchronously executes a side effect action on the success value if the Result is successful, then returns the original Result.
     /// </summary>
     /// <param name="onSuccess">Async action to execute on the success value.</param>

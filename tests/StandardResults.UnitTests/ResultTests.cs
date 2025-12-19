@@ -427,4 +427,112 @@ public class ResultTests
         Assert.True(success.IsSuccess);
         Assert.Equal("valid", success.Value);
     }
+
+    [Theory]
+    [InlineData(true, 7, true, 14)]
+    [InlineData(false, 0, false, 0)]
+    public void Tap_ExecutesOnlyOnSuccess(bool isSuccess, int inputValue, bool shouldExecute, int expectedSideEffect)
+    {
+        var result = isSuccess
+            ? Result<int, string>.Success(inputValue)
+            : Result<int, string>.Failure("error");
+        var sideEffectValue = 0;
+
+        var tapped = result.Tap(value => sideEffectValue = value * 2);
+
+        Assert.Equal(expectedSideEffect, sideEffectValue);
+        Assert.Equal(shouldExecute, sideEffectValue > 0);
+        Assert.Equal(result, tapped);
+    }
+
+    [Fact]
+    public void Tap_Chaining_AllExecuteInOrder()
+    {
+        var result = Result<int, string>.Success(5);
+        var log = new List<string>();
+
+        var tapped = result
+            .Tap(v => log.Add($"first:{v}"))
+            .Tap(v => log.Add($"second:{v * 2}"))
+            .Tap(v => log.Add($"third:{v * 3}"));
+
+        Assert.Equal(3, log.Count);
+        Assert.Equal("first:5", log[0]);
+        Assert.Equal("second:10", log[1]);
+        Assert.Equal("third:15", log[2]);
+        Assert.True(tapped.IsSuccess);
+        Assert.Equal(5, tapped.Value);
+    }
+
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public void TapError_ExecutesOnlyOnFailure(bool isSuccess, bool shouldExecute)
+    {
+        var result = isSuccess
+            ? Result<int, string>.Success(8)
+            : Result<int, string>.Failure("error");
+        var executed = false;
+
+        var tapped = result.TapError(_ => executed = true);
+
+        Assert.Equal(shouldExecute, executed);
+        Assert.Equal(result, tapped);
+    }
+
+    [Fact]
+    public void TapError_Chaining_AllExecuteInOrder()
+    {
+        var result = Result<int, string>.Failure("validation failed");
+        var log = new List<string>();
+
+        var tapped = result
+            .TapError(e => log.Add($"first:{e}"))
+            .TapError(e => log.Add($"second:{e.Length}"))
+            .TapError(_ => log.Add("third:done"));
+
+        Assert.Equal(3, log.Count);
+        Assert.Equal("first:validation failed", log[0]);
+        Assert.Equal("second:17", log[1]);
+        Assert.Equal("third:done", log[2]);
+        Assert.True(tapped.IsFailure);
+        Assert.Equal("validation failed", tapped.Error);
+    }
+
+    [Fact]
+    public void Tap_And_TapError_Combined_OnlyAppropriateExecutes()
+    {
+        var success = Result<int, string>.Success(10);
+        var failure = Result<int, string>.Failure("error");
+        var successLog = new List<string>();
+        var failureLog = new List<string>();
+
+        success
+            .Tap(v => successLog.Add($"success:{v}"))
+            .TapError(e => successLog.Add($"error:{e}"));
+
+        failure
+            .Tap(v => failureLog.Add($"success:{v}"))
+            .TapError(e => failureLog.Add($"error:{e}"));
+
+        Assert.Single(successLog);
+        Assert.Equal("success:10", successLog[0]);
+
+        Assert.Single(failureLog);
+        Assert.Equal("error:error", failureLog[0]);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void TapMethods_Default_ThrowsInvalidOperationException(bool useTap)
+    {
+        var result = default(Result<int, string>);
+
+        Action act = useTap
+            ? () => result.Tap(_ => { })
+            : () => result.TapError(_ => { });
+
+        Assert.Throws<InvalidOperationException>(act);
+    }
 }
