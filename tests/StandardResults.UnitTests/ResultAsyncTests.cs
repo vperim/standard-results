@@ -232,19 +232,21 @@ public class ResultAsyncTests
     }
 
     [Fact]
-    public async Task EnsureAsync_Failure_DoesNotExecutePredicate_CallsErrorFactory()
+    public async Task EnsureAsync_Failure_DoesNotExecutePredicate_PreservesOriginalError()
     {
         var result = Result<int, string>.Failure("original error");
         var predicateExecuted = false;
+        var errorFactoryCalled = false;
 
         var ensured = await result.EnsureAsync(
             async _ => { await Task.Yield(); predicateExecuted = true; return true; },
-            () => "error factory called"
+            () => { errorFactoryCalled = true; return "error factory called"; }
         );
 
         Assert.False(predicateExecuted);
+        Assert.False(errorFactoryCalled);
         Assert.True(ensured.IsFailure);
-        Assert.Equal("error factory called", ensured.Error);
+        Assert.Equal("original error", ensured.Error);
     }
 
     [Fact]

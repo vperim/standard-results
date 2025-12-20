@@ -502,10 +502,14 @@ public readonly struct Result<T, TError> : IEquatable<Result<T, TError>>
     public async Task<Result<T, TError>> EnsureAsync(
         Func<T, Task<bool>> predicate,
         Func<TError> errorFactory)
-        =>
-            this.IsSuccess && await predicate(this.value!).ConfigureAwait(false)
+    {
+        if (this.IsFailure)
+            return this;
+
+        return await predicate(this.value!).ConfigureAwait(false)
             ? this
             : Failure(errorFactory());
+    }
 
     /// <summary>
     /// Returns the current Result if successful, otherwise returns a new successful Result with the specified fallback value.
