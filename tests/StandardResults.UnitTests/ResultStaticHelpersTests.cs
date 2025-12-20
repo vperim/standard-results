@@ -403,4 +403,32 @@ public class ResultStaticHelpersTests
         Assert.True(combined.IsFailure);
         Assert.Equal(2, combined.Error.Errors.Count);
     }
+
+    [Theory]
+    [InlineData("hello", true)]
+    [InlineData(null, false)]
+    public void FromNullable_ReferenceType_ReturnsExpectedResult(string? input, bool expectSuccess)
+    {
+        var result = Result.FromNullable(input, () => "not found");
+
+        Assert.Equal(expectSuccess, result.IsSuccess);
+        if (expectSuccess)
+            Assert.Equal(input, result.Value);
+        else
+            Assert.Equal("not found", result.Error);
+    }
+
+    [Theory]
+    [InlineData(42, true)]
+    [InlineData(null, false)]
+    public void FromNullable_NullableValueType_ReturnsExpectedResult(int? input, bool expectSuccess)
+    {
+        var result = Result.FromNullable(input, () => "not found");
+
+        Assert.Equal(expectSuccess, result.IsSuccess);
+        if (expectSuccess)
+            Assert.Equal(input, result.Value);
+        else
+            Assert.Equal("not found", result.Error);
+    }
 }

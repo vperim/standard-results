@@ -3,6 +3,32 @@
 public static class Result
 {
     /// <summary>
+    /// Creates a Success result if the value is not null, otherwise creates a Failure with the error from the factory.
+    /// Use this to convert nullable reference types into Results.
+    /// </summary>
+    public static Result<T, TError> FromNullable<T, TError>(T? value, Func<TError> errorFactory)
+        where T : class
+        where TError : notnull
+    {
+        return value is not null
+            ? Result<T, TError>.Success(value)
+            : Result<T, TError>.Failure(errorFactory());
+    }
+
+    /// <summary>
+    /// Creates a Success result if the value has a value, otherwise creates a Failure with the error from the factory.
+    /// Use this to convert nullable value types into Results.
+    /// </summary>
+    public static Result<T, TError> FromNullable<T, TError>(T? value, Func<TError> errorFactory)
+        where T : struct
+        where TError : notnull
+    {
+        return value.HasValue
+            ? Result<T, TError>.Success(value.Value)
+            : Result<T, TError>.Failure(errorFactory());
+    }
+
+    /// <summary>
     /// Combines two Results into a single Result containing a tuple.
     /// Returns the first failure encountered (fail-fast).
     /// </summary>
