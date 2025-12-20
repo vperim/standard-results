@@ -17,7 +17,13 @@ public static class ResultCollectionExtensions
         this IEnumerable<Result<T, TError>> results)
         where TError : notnull
     {
-        var list = new List<T>();
+        var list = results switch
+        {
+            ICollection<Result<T, TError>> c => new List<T>(c.Count),
+            IReadOnlyCollection<Result<T, TError>> rc => new List<T>(rc.Count),
+            _ => new List<T>()
+        };
+
         foreach (var result in results)
         {
             if (result.IsFailure)
@@ -37,20 +43,37 @@ public static class ResultCollectionExtensions
     public static Result<IReadOnlyList<T>, ValidationErrors> SequenceAll<T>(
         this IEnumerable<Result<T, ValidationErrors>> results)
     {
-        var list = new List<T>();
-        var errors = ValidationErrors.Empty;
+        var list = results switch
+        {
+            ICollection<Result<T, ValidationErrors>> c => new List<T>(c.Count),
+            IReadOnlyCollection<Result<T, ValidationErrors>> rc => new List<T>(rc.Count),
+            _ => new List<T>()
+        };
+
+        List<Error>? errorList = null;
+        var isTransient = false;
 
         foreach (var result in results)
         {
             if (result.IsFailure)
-                errors = errors.Merge(result.Error);
+            {
+                errorList ??= [];
+                errorList.AddRange(result.Error.Errors);
+                isTransient |= result.Error.IsTransient;
+            }
             else
+            {
                 list.Add(result.Value);
+            }
         }
 
-        return errors.HasErrors
-            ? Result<IReadOnlyList<T>, ValidationErrors>.Failure(errors)
-            : Result<IReadOnlyList<T>, ValidationErrors>.Success(list);
+        if (errorList is not null)
+        {
+            var errors = ValidationErrors.FromErrors(errorList, isTransient);
+            return Result<IReadOnlyList<T>, ValidationErrors>.Failure(errors);
+        }
+
+        return Result<IReadOnlyList<T>, ValidationErrors>.Success(list);
     }
 
     /// <summary>
@@ -63,20 +86,37 @@ public static class ResultCollectionExtensions
     public static Result<IReadOnlyList<T>, ErrorCollection> SequenceAll<T>(
         this IEnumerable<Result<T, ErrorCollection>> results)
     {
-        var list = new List<T>();
-        var errors = ErrorCollection.Empty;
+        var list = results switch
+        {
+            ICollection<Result<T, ErrorCollection>> c => new List<T>(c.Count),
+            IReadOnlyCollection<Result<T, ErrorCollection>> rc => new List<T>(rc.Count),
+            _ => new List<T>()
+        };
+
+        List<Error>? errorList = null;
+        var isTransient = false;
 
         foreach (var result in results)
         {
             if (result.IsFailure)
-                errors = errors.Merge(result.Error);
+            {
+                errorList ??= [];
+                errorList.AddRange(result.Error.Errors);
+                isTransient |= result.Error.IsTransient;
+            }
             else
+            {
                 list.Add(result.Value);
+            }
         }
 
-        return errors.HasErrors
-            ? Result<IReadOnlyList<T>, ErrorCollection>.Failure(errors)
-            : Result<IReadOnlyList<T>, ErrorCollection>.Success(list);
+        if (errorList is not null)
+        {
+            var errors = ErrorCollection.FromErrors(errorList, isTransient);
+            return Result<IReadOnlyList<T>, ErrorCollection>.Failure(errors);
+        }
+
+        return Result<IReadOnlyList<T>, ErrorCollection>.Success(list);
     }
 
     /// <summary>
@@ -94,7 +134,13 @@ public static class ResultCollectionExtensions
         Func<T, Result<TResult, TError>> selector)
         where TError : notnull
     {
-        var list = new List<TResult>();
+        var list = source switch
+        {
+            ICollection<T> c => new List<TResult>(c.Count),
+            IReadOnlyCollection<T> rc => new List<TResult>(rc.Count),
+            _ => new List<TResult>()
+        };
+
         foreach (var item in source)
         {
             var result = selector(item);
@@ -118,21 +164,38 @@ public static class ResultCollectionExtensions
         this IEnumerable<T> source,
         Func<T, Result<TResult, ValidationErrors>> selector)
     {
-        var list = new List<TResult>();
-        var errors = ValidationErrors.Empty;
+        var list = source switch
+        {
+            ICollection<T> c => new List<TResult>(c.Count),
+            IReadOnlyCollection<T> rc => new List<TResult>(rc.Count),
+            _ => new List<TResult>()
+        };
+
+        List<Error>? errorList = null;
+        var isTransient = false;
 
         foreach (var item in source)
         {
             var result = selector(item);
             if (result.IsFailure)
-                errors = errors.Merge(result.Error);
+            {
+                errorList ??= [];
+                errorList.AddRange(result.Error.Errors);
+                isTransient |= result.Error.IsTransient;
+            }
             else
+            {
                 list.Add(result.Value);
+            }
         }
 
-        return errors.HasErrors
-            ? Result<IReadOnlyList<TResult>, ValidationErrors>.Failure(errors)
-            : Result<IReadOnlyList<TResult>, ValidationErrors>.Success(list);
+        if (errorList is not null)
+        {
+            var errors = ValidationErrors.FromErrors(errorList, isTransient);
+            return Result<IReadOnlyList<TResult>, ValidationErrors>.Failure(errors);
+        }
+
+        return Result<IReadOnlyList<TResult>, ValidationErrors>.Success(list);
     }
 
     /// <summary>
@@ -148,21 +211,38 @@ public static class ResultCollectionExtensions
         this IEnumerable<T> source,
         Func<T, Result<TResult, ErrorCollection>> selector)
     {
-        var list = new List<TResult>();
-        var errors = ErrorCollection.Empty;
+        var list = source switch
+        {
+            ICollection<T> c => new List<TResult>(c.Count),
+            IReadOnlyCollection<T> rc => new List<TResult>(rc.Count),
+            _ => new List<TResult>()
+        };
+
+        List<Error>? errorList = null;
+        var isTransient = false;
 
         foreach (var item in source)
         {
             var result = selector(item);
             if (result.IsFailure)
-                errors = errors.Merge(result.Error);
+            {
+                errorList ??= [];
+                errorList.AddRange(result.Error.Errors);
+                isTransient |= result.Error.IsTransient;
+            }
             else
+            {
                 list.Add(result.Value);
+            }
         }
 
-        return errors.HasErrors
-            ? Result<IReadOnlyList<TResult>, ErrorCollection>.Failure(errors)
-            : Result<IReadOnlyList<TResult>, ErrorCollection>.Success(list);
+        if (errorList is not null)
+        {
+            var errors = ErrorCollection.FromErrors(errorList, isTransient);
+            return Result<IReadOnlyList<TResult>, ErrorCollection>.Failure(errors);
+        }
+
+        return Result<IReadOnlyList<TResult>, ErrorCollection>.Success(list);
     }
 
     /// <summary>
@@ -177,7 +257,13 @@ public static class ResultCollectionExtensions
         this IEnumerable<Task<Result<T, TError>>> resultTasks)
         where TError : notnull
     {
-        var list = new List<T>();
+        var list = resultTasks switch
+        {
+            ICollection<Task<Result<T, TError>>> c => new List<T>(c.Count),
+            IReadOnlyCollection<Task<Result<T, TError>>> rc => new List<T>(rc.Count),
+            _ => new List<T>()
+        };
+
         foreach (var resultTask in resultTasks)
         {
             var result = await resultTask.ConfigureAwait(false);
@@ -231,7 +317,13 @@ public static class ResultCollectionExtensions
         Func<T, Task<Result<TResult, TError>>> selector)
         where TError : notnull
     {
-        var list = new List<TResult>();
+        var list = source switch
+        {
+            ICollection<T> c => new List<TResult>(c.Count),
+            IReadOnlyCollection<T> rc => new List<TResult>(rc.Count),
+            _ => new List<TResult>()
+        };
+
         foreach (var item in source)
         {
             var result = await selector(item).ConfigureAwait(false);

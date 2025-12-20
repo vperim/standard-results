@@ -1,5 +1,7 @@
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Text;
+// ReSharper disable ForeachCanBeConvertedToQueryUsingAnotherGetEnumerator
 
 namespace StandardResults;
 
@@ -30,7 +32,21 @@ public sealed class ValidationErrors : IError, IEquatable<ValidationErrors>
     }
 
     public string Summary(string separator)
-        => this.HasErrors ? string.Join(separator, this.errors.Select(e => e.ToString())).TrimEnd() : string.Empty;
+    {
+        if (!this.HasErrors)
+            return string.Empty;
+
+        var sb = new StringBuilder();
+        var first = true;
+        foreach (var error in this.errors)
+        {
+            if (!first)
+                sb.Append(separator);
+            sb.Append(error.ToString());
+            first = false;
+        }
+        return sb.ToString().TrimEnd();
+    }
 
     public string Summary() => this.Summary("; ");
 
@@ -100,6 +116,14 @@ public sealed class ValidationErrors : IError, IEquatable<ValidationErrors>
             transient |= t;
         }
         return new ValidationErrors(list.ToImmutable(), transient);
+    }
+
+    /// <summary>Creates a ValidationErrors from a pre-collected list of errors. Used for batch operations.</summary>
+    internal static ValidationErrors FromErrors(List<Error> errors, bool isTransient)
+    {
+        return errors is { Count: > 0 }
+            ? new ValidationErrors(ImmutableList.CreateRange(errors), isTransient)
+            : Empty;
     }
 
     public ValidationErrors When(bool invalidCondition, string fieldName, string message, bool transient = false)

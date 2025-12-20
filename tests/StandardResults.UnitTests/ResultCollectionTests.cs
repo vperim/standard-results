@@ -8,18 +8,19 @@ public class ResultCollectionTests
     {
         // All success
         {
-            new[] { Result<int, string>.Success(1), Result<int, string>.Success(2), Result<int, string>.Success(3) },
-            true, new[] { 1, 2, 3 }, null
+            [Result<int, string>.Success(1), Result<int, string>.Success(2), Result<int, string>.Success(3)],
+            true, [1, 2, 3], null
         },
         // Empty collection
         {
-            Array.Empty<Result<int, string>>(),
-            true, Array.Empty<int>(), null
+            [],
+            true, [], null
         },
         // First failure (fail-fast)
         {
-            new[] { Result<int, string>.Success(1), Result<int, string>.Failure("error1"), Result<int, string>.Failure("error2") },
-            false, Array.Empty<int>(), "error1"
+            [Result<int, string>.Success(1), Result<int, string>.Failure("error1"), Result<int, string>.Failure("error2")
+            ],
+            false, [], "error1"
         }
     };
 
@@ -78,7 +79,7 @@ public class ResultCollectionTests
         var sequenced = results.SequenceAll();
 
         Assert.True(sequenced.IsSuccess);
-        Assert.Equal(new[] { 1, 2, 3 }, sequenced.Value);
+        Assert.Equal([1, 2, 3], sequenced.Value);
     }
 
     [Fact]
@@ -142,12 +143,12 @@ public class ResultCollectionTests
     public static TheoryData<int[], bool, string[], string?> TraverseCases => new()
     {
         // All success (odd numbers only - transform succeeds for all)
-        { new[] { 1, 3, 5 }, true, new[] { "item-1", "item-3", "item-5" }, null },
+        { [1, 3, 5], true, ["item-1", "item-3", "item-5"], null },
         // Empty collection
-        { Array.Empty<int>(), true, Array.Empty<string>(), null },
+        { [], true, [], null },
         // First failure (fail-fast) - Real-world example: Athena's BoletoService uses this pattern
         // to generate boletos for parcelas, failing fast on the first error encountered.
-        { new[] { 1, 2, 3, 4 }, false, Array.Empty<string>(), "even-2" }
+        { [1, 2, 3, 4], false, [], "even-2" }
     };
 
     [Theory]
@@ -200,7 +201,7 @@ public class ResultCollectionTests
             Result<string, ValidationErrors>.Success($"odd-{i}"));
 
         Assert.True(result.IsSuccess);
-        Assert.Equal(new[] { "odd-1", "odd-3", "odd-5" }, result.Value);
+        Assert.Equal(["odd-1", "odd-3", "odd-5"], result.Value);
     }
 
     #endregion
@@ -211,23 +212,21 @@ public class ResultCollectionTests
     {
         // All success
         {
-            new[]
-            {
+            [
                 Task.FromResult(Result<int, string>.Success(1)),
                 Task.FromResult(Result<int, string>.Success(2)),
                 Task.FromResult(Result<int, string>.Success(3))
-            },
-            true, new[] { 1, 2, 3 }, null
+            ],
+            true, [1, 2, 3], null
         },
         // First failure
         {
-            new[]
-            {
+            [
                 Task.FromResult(Result<int, string>.Success(1)),
                 Task.FromResult(Result<int, string>.Failure("error1")),
                 Task.FromResult(Result<int, string>.Failure("error2"))
-            },
-            false, Array.Empty<int>(), "error1"
+            ],
+            false, [], "error1"
         }
     };
 
@@ -283,7 +282,7 @@ public class ResultCollectionTests
         var result = await tasks.SequenceAllAsync();
 
         Assert.True(result.IsSuccess);
-        Assert.Equal(new[] { 1, 2, 3 }, result.Value);
+        Assert.Equal([1, 2, 3], result.Value);
     }
 
     #endregion
@@ -302,7 +301,7 @@ public class ResultCollectionTests
         });
 
         Assert.True(result.IsSuccess);
-        Assert.Equal(new[] { "item-1", "item-2", "item-3" }, result.Value);
+        Assert.Equal(["item-1", "item-2", "item-3"], result.Value);
     }
 
     [Fact]

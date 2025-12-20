@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Text;
 
 namespace StandardResults;
 
@@ -29,7 +30,21 @@ public sealed class ErrorCollection : IError, IEquatable<ErrorCollection>
     }
 
     public string Summary(string separator)
-        => this.HasErrors ? string.Join(separator, this.errors.Select(e => e.ToString())).TrimEnd() : string.Empty;
+    {
+        if (!this.HasErrors)
+            return string.Empty;
+
+        var sb = new StringBuilder();
+        var first = true;
+        foreach (var error in this.errors)
+        {
+            if (!first)
+                sb.Append(separator);
+            sb.Append(error.ToString());
+            first = false;
+        }
+        return sb.ToString().TrimEnd();
+    }
 
     public string Summary() => this.Summary("; ");
 
@@ -98,9 +113,22 @@ public sealed class ErrorCollection : IError, IEquatable<ErrorCollection>
         if (errors is null) throw new ArgumentNullException(nameof(errors));
         if (errors.Length == 0) return Empty;
 
-        var list = ImmutableList.CreateRange(errors);
-        var transient = errors.Any(e => e.IsTransient);
-        return new ErrorCollection(list, transient);
+        var builder = ImmutableList.CreateBuilder<Error>();
+        var transient = false;
+        foreach (var error in errors)
+        {
+            builder.Add(error);
+            transient |= error.IsTransient;
+        }
+        return new ErrorCollection(builder.ToImmutable(), transient);
+    }
+
+    /// <summary>Creates an ErrorCollection from a pre-collected list of errors. Used for batch operations.</summary>
+    internal static ErrorCollection FromErrors(List<Error> errors, bool isTransient)
+    {
+        if (errors is null || errors.Count == 0)
+            return Empty;
+        return new ErrorCollection(ImmutableList.CreateRange(errors), isTransient);
     }
 
     /// <summary>Adds an error when the condition is true.</summary>
